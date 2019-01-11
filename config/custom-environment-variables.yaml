@@ -1,0 +1,10 @@
+app:
+  hostname: HOSTNAME
+  server:
+    host: NLE_SERVER_HOST
+    port: NLE_SERVER_PORT
+  nuls:
+    host: NLE_NULS_HOST
+  db:
+    host: NLE_DB_HOST
+    database: NLE_DB_DATABASE

@@ -1,0 +1,46 @@
+version: '2.1'
+services:
+  light-explorer:
+    build:
+      context: ../..
+      dockerfile: ./environment/dev/Dockerfile
+    image: light-explorer
+    container_name: light-explorer
+    volumes:
+      - ../..:/code
+    ports:
+      - "3010:3000"
+      - "9229:9229"
+    depends_on:
+      - nuls
+      - mongo
+
+  nuls:
+    image: nuls/client-node:1.1.6-testnet
+    ports:
+      - 8001:8001
+    volumes:
+      - ~/data/nuls-testnet/data:/nuls/data
+      - ~/data/nuls-testnet/logs:/nuls/logs
+
+  mongo:
+    image: mongo
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.stats().ok' | mongo localhost:27017/test --quiet"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    ports:
+      - "27017:27017"
+    volumes:
+      - ~/data/nuls-light-explorer-testnet/databases/mongo:/data/db
+    command: mongod --storageEngine wiredTiger
+
+  mongo-shell:
+    image: 'mongo'
+    entrypoint: 'mongo --host mongo -u root -p password admin'
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - './scripts/:/scripts/'

@@ -1,0 +1,24 @@
+env:
+app:
+  application: 'nuls-light-explorer'
+  hostname: 'localhost'
+  server:
+    host: 'http://localhost:3000'
+    port: 3000
+  nuls:
+    host: http://nuls:8001
+    base: '/api'
+    resources: 
+      getLastHeight: /block/newest/height
+      getBlock: /block/header/height/__BLOCK_HEIGHT__
+      getBlockBytes: /block/bytes?hash=__BLOCK_HASH__
+      broadcastTx: /accountledger/transaction/broadcast
+  db:
+    host: mongodb://mongo:27017
+    database: 'explorer'
+    collections:
+      blocks: blocks
+      transactions: transactions
+      consensus: consensus
+  logger:
+    logLevel: debug

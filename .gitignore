@@ -1,0 +1,11 @@
+node_modules/
+.idea/
+.DS_Store
+.vscode/
+documentation/
+.editorconfig
+dist/
+config/local.yaml
+*.html
+coverage/
+tests/coverage/

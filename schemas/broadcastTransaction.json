@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-03/schema",
+  "id": "http://jsonschema.net",
+  "description": "Broadcast a transaction to the nuls network",
+  "properties": {
+    "txHex": {
+      "type": "string",
+      "description": "Hexadecimal representation of the serialized transaction bytes"
+    }
+  },
+  "required": [ "txHex" ]
+}

@@ -1,0 +1,66 @@
+{
+  "name": "nuls-light-explorer",
+  "version": "1.0.0",
+  "description": "Nuls light explorer",
+  "main": "index.js",
+  "scripts": {
+    "start": "npm run serve:dev",
+    "serve:dev": "concurrently \"npm run watch:ts\" \"sleep 3 && npm run serve:debug\"",
+    "serve:prod": "node dist/index.js | pino -c --errorProps '*'",
+    "serve:debug": "nodemon --inspect=0.0.0.0 dist/index.js | pino -c --errorProps '*'",
+    "build:ts": "tsc",
+    "watch:ts": "tsc -w --inlineSources --inlineSourceMap",
+    "test": "jest",
+    "test:watch": "jest --watchAll",
+    "coverage": "jest --coverage",
+    "lint": "tslint --project .",
+    "lint:fix": "npm run lint -- --fix",
+    "clean:docs": "rimraf documentation && mkdirp documentation",
+    "md2html": "generate-md --layout github --input ./README.md --output ./documentation",
+    "docs": "npm run clean:docs && npm run md2html"
+  },
+  "repository": {
+    "type": "git",
+    "url": "<repository.git>"
+  },
+  "keywords": [
+    "nuls",
+    "explorer",
+    "light",
+    "js",
+    "node"
+  ],
+  "author": "Angel Manzano <amalcaraz89@gmail.com>",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/config": "^0.0.33",
+    "@types/cors": "^2.8.4",
+    "@types/express": "^4.16.0",
+    "@types/jest": "^23.3.2",
+    "@types/mongodb": "^2.2.18",
+    "@types/pino": "^4.16.0",
+    "@types/request": "^2.47.1",
+    "@types/request-promise-native": "^1.0.15",
+    "concurrently": "^3.5.1",
+    "jest": "^23.6.0",
+    "markdown-styles": "^3.1.10",
+    "mkdirp": "^0.5.1",
+    "nodemon": "^1.14.12",
+    "rimraf": "^2.6.2",
+    "ts-jest": "^22.4.6",
+    "tslint": "^5.11.0",
+    "typescript": "^2.9.2"
+  },
+  "dependencies": {
+    "body-parser": "1.18.3",
+    "config": "1.29.2",
+    "cors": "2.8.4",
+    "express": "4.16.4",
+    "express-jsonschema": "1.1.6",
+    "js-yaml": "3.10.0",
+    "mongodb": "3.0.2",
+    "pino": "4.17.6",
+    "request": "^2.88.0",
+    "request-promise-native": "1.0.5"
+  }
+}
