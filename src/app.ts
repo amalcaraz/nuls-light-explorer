@@ -1,6 +1,6 @@
 
 import api from './modules/api';
-import jobs from './modules/jobs';
+import jobs from './modules/jobs/jobs';
 import * as db from './services/db';
 import logger from './services/logger';
 
@@ -8,9 +8,9 @@ export async function run() {
 
   try {
 
-    await db.connect();
-    await jobs;
-    api();
+    // await db.connect();
+    jobs();
+    api(); 
 
   } catch (e) {
 

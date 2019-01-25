@@ -2,6 +2,7 @@
 # set -e
 
 yarn install
+yarn link nuls-js
 
 if [ "$1" = 'dev' ]
 then

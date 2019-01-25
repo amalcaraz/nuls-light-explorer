@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from 'express';
 import * as nulsService from '../services/nuls';
 import config from '../services/config';
 import * as db from '../services/db';
-import logger from '../services/logger';
 import { error } from '../utils/error';
 
 export async function healthCheckController(req: Request, res: Response, next: NextFunction) {

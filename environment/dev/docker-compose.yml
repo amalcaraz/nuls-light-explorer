@@ -1,19 +1,22 @@
 version: '2.1'
 services:
-  light-explorer:
-    build:
-      context: ../..
-      dockerfile: ./environment/dev/Dockerfile
-    image: light-explorer
-    container_name: light-explorer
-    volumes:
-      - ../..:/code
-    ports:
-      - "3010:3000"
-      - "9229:9229"
-    depends_on:
-      - nuls
-      - mongo
+  # light-explorer:
+  #   build:
+  #     context: ../..
+  #     dockerfile: ./environment/dev/Dockerfile
+  #   image: light-explorer
+  #   container_name: light-explorer
+  #   environment:
+  #     NLE_LEVEL_PATH="/data/nuls"
+  #   volumes:
+  #     - ../..:/code
+  #     - ~/data/nuls-light-explorer:/data/nuls-light-explorer
+  #   ports:
+  #     - "3010:3000"
+  #     - "9229:9229"
+  #   depends_on:
+  #     - nuls
+  #     - mongo
 
   nuls:
     image: nuls/client-node:1.1.6-testnet

@@ -15,3 +15,9 @@ declare module 'express-jsonschema' {
   }
 
 }
+
+
+declare module 'es6-promise-pool' {
+  const PromisePool: any;
+  export = PromisePool;
+}

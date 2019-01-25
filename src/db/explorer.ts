@@ -1,4 +1,4 @@
-import { Collection, Db } from 'mongodb';
+import { Collection, Db, InsertOneWriteOpResult } from 'mongodb';
 import config from '../services/config';
 import * as db from '../services/db';
 import { ConsensusModel } from '../models/consensus';
@@ -10,6 +10,7 @@ const database: string = config.db.database;
 const blocksCollection: string = config.db.collections.blocks;
 const transactionsCollection: string = config.db.collections.transactions;
 const consensusCollection: string = config.db.collections.consensus;
+
 
 async function _getCollection(collection: string): Promise<Collection> {
   return await db.getDb(database).then((client: Db) => client.collection(collection));
@@ -26,6 +27,14 @@ export async function getLastBlockHeight(): Promise<blockHeight> {
     .next()
     .then((block: Block) => block.height)
     .catch(() => 0);
+
+}
+
+export async function putBlock(block: any): Promise<InsertOneWriteOpResult> {
+
+  const coll: Collection = await _getCollection(blocksCollection);
+
+  return coll.insert(block);
 
 }
 

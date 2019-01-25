@@ -1,12 +1,9 @@
 import * as nulsService from '../services/nuls';
 import { error } from '../utils/error';
 import { nulsBroadcastTransactionError } from './error';
+import { txHash } from '../models';
 
-export interface IExplorerResponse {
-  success: boolean;
-}
-
-export async function broadcastTransaction(txHex: string): Promise<IExplorerResponse> {
+export async function broadcastTransaction(txHex: string): Promise<txHash> {
 
   try {
 
