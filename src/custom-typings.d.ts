@@ -1,7 +1,7 @@
 declare module 'express-jsonschema' {
 
   export function validate(...args: any[]): (...args: any[]) => any;
-  
+
   interface JsonSchemaValidation {
     value: any;
     property: string;
@@ -20,4 +20,10 @@ declare module 'express-jsonschema' {
 declare module 'es6-promise-pool' {
   const PromisePool: any;
   export = PromisePool;
+}
+
+
+declare module 'multilevel' {
+  const any: any;
+  export = any;
 }

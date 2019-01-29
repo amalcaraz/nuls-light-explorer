@@ -5,6 +5,5 @@ app:
     port: NLE_SERVER_PORT
   nuls:
     host: NLE_NULS_HOST
-  db:
-    host: NLE_DB_HOST
-    database: NLE_DB_DATABASE
+  level:
+    path: NLE_LEVEL_PATH

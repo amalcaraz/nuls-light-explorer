@@ -6,19 +6,29 @@ app:
     host: 'http://localhost:3000'
     port: 3000
   nuls:
-    host: http://nuls:8001
+    # host: http://nuls:8001
+    host: http://localhost:8001
     base: '/api'
     resources: 
       getLastHeight: /block/newest/height
       getBlock: /block/header/height/__BLOCK_HEIGHT__
       getBlockBytes: /block/bytes?hash=__BLOCK_HASH__
       broadcastTx: /accountledger/transaction/broadcast
-  db:
-    host: mongodb://mongo:27017
-    database: 'explorer'
-    collections:
-      blocks: blocks
-      transactions: transactions
-      consensus: consensus
+  level:
+    # path: /data/nuls-light-explorer
+    path: /Users/amalcaraz/data/nuls-light-explorer-rocks
+    databases:
+      common: 
+        name: common
+        port: 3090
+      heightBlock: 
+        name: heightBlock
+        port: 3091
+      heightBlockBytes: 
+        name: heightBlockBytes
+        port: 3092
+  jobs:
+    retryTimeout: 8
+    blockTime: 10
   logger:
     logLevel: debug

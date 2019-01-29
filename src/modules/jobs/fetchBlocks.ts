@@ -1,125 +1,210 @@
 import logger from '../../services/logger';
 import * as nulsService from '../../services/nuls';
 import { NulsBlockHeader } from '../../models/nuls';
-import * as levelDb from '../../db/level/explorer';
+import * as levelDb from '../../db/level/blockBytes';
 import config from '../../services/config';
 import * as PromisePool from 'es6-promise-pool';
-import * as level from '../../services/level';
+import { sleep } from './utils';
+import { OrderedSet } from 'immutable';
 
-const batch: number = 100;
+class BlockFetchJob {
 
-function* newBlocksGenerator(currentHeight: number, netTopHeight: number): IterableIterator<Promise<any>> {
+  // static roundsToCheckMissed = 1000;
+  static timeToCheckMissed = 1000 * 10;
+  static blocksToCheck = 10000;
+  static parallelBlocks = 50;
 
-  while (currentHeight <= netTopHeight) {
+  private missedBlocks: OrderedSet<number> = OrderedSet<number>();
+  private lastSafeHeight: number = -1;
+  private currentHeight: number = 0;
+  private topHeight: number = -1;
+  private checkingMissedStream: NodeJS.ReadableStream;
 
-    yield fetchBlock(currentHeight);
-    currentHeight++;
+  async run() {
 
-  }
+    this.lastSafeHeight = await levelDb.getLastHeightBlockBytes().catch(() => -1);
+    this.currentHeight = this.lastSafeHeight + 1;
 
-}
+    setInterval(() => this.checkMissedBlocks(), 1000 * config.jobs.blockTime);
 
-async function fetchMissedBlocks(lastBlockHeight: number): Promise<number[]> {
+    while (true) {
 
-  const db = level.connect(config.level.databases.heightBlockBytes);
-  let currentKey: number = lastBlockHeight + 1;
+      try {
 
-  const missed: number[] = [];
+        this.topHeight = await nulsService.getLastHeight();
 
-  return new Promise((resolve, reject) => {
+        if (this.currentHeight < this.topHeight || this.missedBlocks.size > 0) {
 
-    db
-      .createKeyStream({ gt: lastBlockHeight })
-      .on('data', (key: string) => {
+          logger.debug(`Fetching blocks from [${this.currentHeight}] to [${this.topHeight}], and (${this.missedBlocks.size}) missed`);
 
-        const k: number = parseInt(key);
+          const promiseIterator: any = this.missedBlocksGenerator();
+          const pool = new PromisePool(promiseIterator, BlockFetchJob.parallelBlocks);
+          await pool.start();
 
-        if (k > currentKey) {
-
-          levelDb.putLastHeightBlockBytes(currentKey);
-
-          while (k > currentKey) {
-            missed.push(currentKey);
-            currentKey++;
-          }
+          logger.debug(`Waiting ${config.jobs.blockTime} secs until next check`);
 
         }
 
-      })
-      .on('error', (e) => {
+        await sleep(1000 * config.jobs.blockTime + 1);
 
-        reject(e);
+      } catch (e) {
 
-      })
-      .on('end', () => {
-
-        resolve(missed);
-
-      });
-
-  });
-
-}
-
-function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-
-async function fetchBlock(currentHeight: number): Promise<any> {
-
-  logger.debug(`--> Fetching block [${currentHeight}]`);
-
-  const blockHeader: NulsBlockHeader = await nulsService.getBlockHeader(currentHeight);
-  const blockBytes: string = await nulsService.getBlockBytes(blockHeader.hash);
-
-  await levelDb.putBlockBytes(currentHeight, blockBytes);
-
-}
-
-async function fetchBlocks(currentHeight: number): Promise<any> {
-
-  const promiseIterator: any = newBlocksGenerator(lastBlockHeight + 1, netTopHeight);
-  const pool = new PromisePool(promiseIterator, 1000);
-
-  await pool.start();
-
-}
-
-async function run() {
-
-  while (true) {
-
-    try {
-
-      let lastBlockHeight = (await levelDb.getLastHeightBlockBytes().catch(() => -1)) || -1;
-
-      const missedBlocks = await fetchMissedBlocks(lastBlockHeight);
-
-      const netTopHeight: number = await nulsService.getLastHeight();
-
-      if (lastBlockHeight < netTopHeight) {
-        // Fetch blocks in parallel in batches of 10 requests
-
-       
-
-      } else {
-
-        logger.info(`Retrying in ${config.jobs.retryTimeout} sec...`);
-        await sleep(1000 * config.jobs.retryTimeout);
+        logger.error(`Error fetching blocks: ${e}`);
+        logger.info(`Retrying in ${config.jobs.blockTime} sec...`);
+        await sleep(1000 * config.jobs.blockTime);
 
       }
-
-    } catch (e) {
-
-      logger.error(`Error parsing block [${lastBlockHeight + 1}]: ${e}`);
-      logger.info(`Retrying in ${config.jobs.retryTimeout} sec...`);
-      await sleep(1000 * config.jobs.retryTimeout);
 
     }
 
   }
 
+  async fetchBlock(currentHeight: number): Promise<number> {
+
+    try {
+
+      // if (currentHeight % 1000 === 0)
+      //   logger.debug(`--> Fetching block [${currentHeight}]`);
+
+      const blockHeader: NulsBlockHeader = await nulsService.getBlockHeader(currentHeight);
+      const blockBytes: string = await nulsService.getBlockBytes(blockHeader.hash);
+
+      await levelDb.putBlockBytes(currentHeight, blockBytes);
+
+    } catch (e) {
+
+      // logger.debug(`--> Error fetching block [${currentHeight}], add to pending...`);
+      this.missedBlocks = this.missedBlocks.add(currentHeight);
+
+    }
+
+    return currentHeight;
+
+  }
+
+  async checkMissedBlocks() {
+
+    let bestHeight: number = -1;
+    let currentKey: number = this.lastSafeHeight + 1;
+    let firstMissedBlockFound: boolean;
+
+    if (!this.checkingMissedStream) {
+
+      logger.debug(`Checking blocks from height [${this.lastSafeHeight}]`);
+
+      this.checkingMissedStream = (await levelDb
+        .subscribeToBlockBytes({ keys: true, values: false, gt: this.lastSafeHeight, lte: this.lastSafeHeight + BlockFetchJob.blocksToCheck }))
+        .on('data', async (key: string) => {
+
+          // if (currentKey % 10000 === 0)
+          //   logger.debug('Checking key --> ', currentKey);
+
+          const k: number = parseInt(key);
+
+          if (k > currentKey) {
+
+            const fromHeight: number = currentKey;
+
+            if (!firstMissedBlockFound) {
+
+              firstMissedBlockFound = true;
+              bestHeight = currentKey - 1;
+
+            }
+
+            while (k > currentKey) {
+
+              this.missedBlocks = this.missedBlocks.add(currentKey);
+              currentKey++;
+
+            }
+
+            logger.debug(`Adding missed heights from [${fromHeight}] to [${currentKey - 1}]`);
+
+          } else {
+
+            if (!firstMissedBlockFound) {
+              bestHeight = currentKey;
+            }
+            currentKey++;
+
+          }
+
+        })
+        .on('error', (e: any) => {
+
+          this.removeCheckMissedStream();
+          throw new Error('Error processing last safe height');
+
+        })
+        .on('end', async () => {
+
+          // logger.debug('Finishing processing last safe height');
+
+          await this.saveSafestHeight(bestHeight);
+          this.removeCheckMissedStream();
+
+        });
+
+    }
+
+  }
+
+  private removeCheckMissedStream() {
+
+    if (this.checkingMissedStream) {
+
+      this.checkingMissedStream.removeAllListeners();
+      this.checkingMissedStream = undefined as any;
+
+    }
+
+  }
+
+  private async saveSafestHeight(bestHeight: number) {
+
+    if (bestHeight > this.lastSafeHeight) {
+
+      logger.info(`New block bytes safe height: [${bestHeight}]`);
+      await levelDb.putLastHeightBlockBytes(bestHeight);
+      this.lastSafeHeight = bestHeight;
+
+    }
+
+  }
+
+  private * missedBlocksGenerator(): IterableIterator<Promise<any>> {
+
+    while (this.currentHeight <= this.topHeight) {
+
+      let pendingBlock: number | undefined;
+
+      while ((pendingBlock = this.missedBlocks.min()) !== undefined) {
+
+        this.missedBlocks = this.missedBlocks.delete(pendingBlock);
+        yield this.fetchBlock(pendingBlock);
+
+      }
+
+      yield this.fetchBlock(this.currentHeight);
+      this.currentHeight++;
+
+    }
+
+  }
+}
+
+async function run() {
+
+  const job: BlockFetchJob = new BlockFetchJob();
+  await job.run();
+
+  // await checkConsecutiveKeys();
+
 }
 
 export default run;
+
+if (require.main === module) {
+  run();
+}

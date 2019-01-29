@@ -1,68 +1,144 @@
 import logger from '../../services/logger';
-import * as nulsService from '../../services/nuls';
-import { NulsBlockHeader } from '../../models/nuls';
-import { Block } from 'nuls-js';
-import * as levelDb from '../../db/level/explorer';
+import { Block, BlockObject } from 'nuls-js';
+import * as levelDb from '../../db/level';
+import config from '../../services/config';
+import { sleep } from './utils';
 
-const batch: number = 100;
+class BlockParseJob {
 
-async function processNewBlock(currentHeight: number) {
+  static batchCount: number = 1000;
 
-  const blockHeader: NulsBlockHeader = await nulsService.getBlockHeader(currentHeight);
-  const blockBytes: string = await nulsService.getBlockBytes(blockHeader.hash);
+  private lastSafeHeight: number = -1;
+  private blockBytesStream: NodeJS.ReadableStream;
 
-  logger.debug(`--> Processing block [${currentHeight}]`);
+  async run() {
 
-  const blockBytesBuffer: Buffer = Buffer.from(blockBytes, 'base64'); 
-  const block: Block = Block.fromBytes(blockBytesBuffer);
+    this.lastSafeHeight = await levelDb.getLastHeight().catch(() => -1);
 
-  // not need to await the insert cause next block will not modify this one
-  levelDb.putBlock(block);
+    while (true) {
 
-}
+      try {
 
-async function run() {
+        await this.parseBlocks();
 
-  let lastBlockHeighProcessed = (await levelDb.getLastHeight().catch(() => -1)) || -1;
+      } catch (e) {
 
-  while (true) {
-
-    try {
-
-      const netTopHeight: number = await nulsService.getLastHeight();
-
-      if (lastBlockHeighProcessed < netTopHeight) {
-
-        for (let currentHeight = lastBlockHeighProcessed + 1; currentHeight <= netTopHeight; currentHeight++) {
-
-          await processNewBlock(currentHeight);
-          lastBlockHeighProcessed = currentHeight;
-  
-          if (currentHeight % batch === 0) {
-            await levelDb.putLastHeight(currentHeight); 
-          }
-
-        }
-       
-      } else {
-
-        logger.info(`Retrying in 8 sec...`);
-        setTimeout(run, 1000 * 8);
-        break;
+        logger.error(`Error parsing blocks: ${e}`);
+        logger.info(`Retrying in ${config.jobs.blockTime} sec...`);
+        await sleep(1000 * config.jobs.blockTime);
 
       }
-
-    } catch (e) {
-
-      logger.error(`Error parsing block [${lastBlockHeighProcessed + 1}]: ${e}`);
-      logger.info(`Retrying in 8 sec...`);
-      setTimeout(run, 1000 * 8);
-      break;
 
     }
 
   }
 
+  async parseBlocks() {
+
+    return new Promise(async (resolve, reject) => {
+
+      if (this.blockBytesStream) {
+
+        reject(new Error('Parsing process already in course'));
+
+      } else {
+
+        const blocks: BlockObject[] = [];
+        let currentHeight: number = this.lastSafeHeight + 1;
+
+        const errorFn = (e: Error) => {
+
+          this.saveBatchBlocks(blocks);            
+          this.removeCheckMissedStream();
+          reject(e);
+
+        };
+
+        logger.info(`Parsing blocks from [${currentHeight}] to [${currentHeight + BlockParseJob.batchCount}]`);
+
+        this.blockBytesStream = (await levelDb.subscribeToBlockBytes({
+          keys: false,
+          values: true,
+          gte: currentHeight,
+          lt: currentHeight + BlockParseJob.batchCount
+        }))
+          .on('data', async (blockBytes: string) => {
+
+            try {
+
+              const b: BlockObject = this.parseBlock(blockBytes);
+              blocks.push(b);
+              currentHeight++;
+
+            } catch (e) {
+
+              errorFn(e);
+
+            }
+
+          })
+          .on('error', errorFn)
+          .on('end', async () => {
+
+            this.saveBatchBlocks(blocks);
+            this.removeCheckMissedStream();
+            resolve();
+
+          });
+      }
+
+    });
+
+  }
+
+  private removeCheckMissedStream() {
+
+    if (this.blockBytesStream) {
+
+      this.blockBytesStream.removeAllListeners();
+      this.blockBytesStream = undefined as any;
+
+    }
+
+  }
+
+  private async saveBatchBlocks(blocks: BlockObject[] = []) {
+    
+    const bestHeight: number = blocks.length > 0 ? blocks[blocks.length - 1].blockHeader.height : this.lastSafeHeight;
+
+    if (bestHeight > this.lastSafeHeight) {
+
+      logger.info(`New parsed blocks best height: [${bestHeight}]`);
+      await levelDb.putBatchBlocks(blocks);
+      this.lastSafeHeight = bestHeight;
+
+    }
+
+  }
+
+  parseBlock(blockBytes: string): BlockObject {
+
+    const blockBytesBuffer: Buffer = Buffer.from(blockBytes, 'base64');
+    const block: BlockObject = Block.fromBytes(blockBytesBuffer).toObject();
+
+    // wait for batch insert
+    // await levelDb.putBlock(block);
+
+    return block;
+
+  }
+
+}
+
+async function run() {
+
+  const job: BlockParseJob = new BlockParseJob();
+  await job.run();
+
 }
 
 export default run;
+
+if (require.main === module) {
+  run();
+}
