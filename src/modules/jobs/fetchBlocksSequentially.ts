@@ -1,7 +1,7 @@
 import logger from '../../services/logger';
 import * as nulsService from '../../services/nuls';
 import { NulsBlockHeader } from '../../models/nuls';
-import * as levelDb from '../../db/level/blockBytes';
+import * as levelDb from '../../db/level/blockByte';
 
 const batch: number = 100;
 

@@ -3,6 +3,7 @@ import config from '../../services/config';
 import { BlockObject } from 'nuls-js';
 import { getBlockNumberKey } from '../../modules/jobs/utils';
 import { AbstractIteratorOptions, PutBatch } from 'abstract-leveldown';
+import { getLastKey } from './common';
 
 export async function getBlock(height: number): Promise<BlockObject> {
 
@@ -45,30 +46,10 @@ export async function putBatchBlocks(blocks: BlockObject[]): Promise<void> {
 
 // }
 
-export async function getLastHeight(): Promise<number> {
+export async function getLastBlockHeight(): Promise<number> {
 
-  const db = await levelDb.connect(config.level.databases.heightBlock);
-  const iterator = (db as any).iterator({ keys: true, values: false, reverse: true, limit: 1 });
-
-  return new Promise<number>((resolve, reject) => {
-
-    iterator.next((e: Error, key: string) => {
-
-      let error: Error = e;
-
-      iterator.end((e: Error) => {
-
-        error = e || error;
-
-        !error && key !== undefined
-          ? resolve(parseInt(key))
-          : reject(error);
-
-      });
-
-    });
-
-  });
+  const key: string = await getLastKey(config.level.databases.heightBlock);
+  return parseInt(key);
 
 }
 

@@ -1,5 +1,5 @@
 import logger from '../../services/logger';
-import * as levelDb from '../../db/level/blockBytes';
+import * as levelDb from '../../db/level/blockByte';
 
 export function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));

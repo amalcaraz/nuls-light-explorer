@@ -13,7 +13,7 @@ class BlockParseJob {
 
   async run() {
 
-    this.lastSafeHeight = await levelDb.getLastHeight().catch(() => -1);
+    this.lastSafeHeight = await levelDb.getLastBlockHeight().catch(() => -1);
 
     while (true) {
 
@@ -48,7 +48,7 @@ class BlockParseJob {
 
         const errorFn = (e: Error) => {
 
-          this.saveBatchBlocks(blocks);            
+          this.saveBatchBlocks(blocks);
           this.removeCheckMissedStream();
           reject(e);
 
@@ -57,14 +57,20 @@ class BlockParseJob {
         logger.info(`Parsing blocks from [${currentHeight}] to [${currentHeight + BlockParseJob.batchCount}]`);
 
         this.blockBytesStream = (await levelDb.subscribeToBlockBytes({
-          keys: false,
+          keys: true,
           values: true,
           gte: currentHeight,
           lt: currentHeight + BlockParseJob.batchCount
         }))
-          .on('data', async (blockBytes: string) => {
+          .on('data', async ({ key, blockBytes }) => {
 
             try {
+
+              const k: number = parseInt(key);
+
+              if (k > currentHeight) {
+                throw (new Error('Non sequential block found'));
+              }
 
               const b: BlockObject = this.parseBlock(blockBytes);
               blocks.push(b);
@@ -103,7 +109,7 @@ class BlockParseJob {
   }
 
   private async saveBatchBlocks(blocks: BlockObject[] = []) {
-    
+
     const bestHeight: number = blocks.length > 0 ? blocks[blocks.length - 1].blockHeader.height : this.lastSafeHeight;
 
     if (bestHeight > this.lastSafeHeight) {

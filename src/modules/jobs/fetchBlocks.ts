@@ -1,7 +1,7 @@
 import logger from '../../services/logger';
 import * as nulsService from '../../services/nuls';
 import { NulsBlockHeader } from '../../models/nuls';
-import * as levelDb from '../../db/level/blockBytes';
+import * as levelDb from '../../db/level/blockByte';
 import config from '../../services/config';
 import * as PromisePool from 'es6-promise-pool';
 import { sleep } from './utils';
@@ -92,8 +92,12 @@ class BlockFetchJob {
 
       logger.debug(`Checking blocks from height [${this.lastSafeHeight}]`);
 
-      this.checkingMissedStream = (await levelDb
-        .subscribeToBlockBytes({ keys: true, values: false, gt: this.lastSafeHeight, lte: this.lastSafeHeight + BlockFetchJob.blocksToCheck }))
+      this.checkingMissedStream = (await levelDb.subscribeToBlockBytes({
+        keys: true,
+        values: false,
+        gt: this.lastSafeHeight,
+        lte: this.lastSafeHeight + BlockFetchJob.blocksToCheck
+      }))
         .on('data', async (key: string) => {
 
           // if (currentKey % 10000 === 0)

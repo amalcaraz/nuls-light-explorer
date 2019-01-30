@@ -24,9 +24,15 @@ app:
       heightBlock: 
         name: heightBlock
         port: 3091
+      hashTransaction: 
+        name: hashTransaction
+        port: 3092
+      addressUtxos:
+        name: addressUtxos
+        port: 3093
       heightBlockBytes: 
         name: heightBlockBytes
-        port: 3092
+        port: 3094
   jobs:
     retryTimeout: 8
     blockTime: 10
