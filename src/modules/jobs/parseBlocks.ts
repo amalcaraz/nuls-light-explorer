@@ -10,10 +10,12 @@ class BlockParseJob {
 
   private lastSafeHeight: number = -1;
   private blockBytesStream: NodeJS.ReadableStream;
+  private lastBlockProcessed: BlockObject | undefined;
 
   async run() {
 
     this.lastSafeHeight = await levelDb.getLastBlockHeight().catch(() => -1);
+    this.lastBlockProcessed = await levelDb.getBlock(this.lastSafeHeight).catch(() => undefined);
 
     while (true) {
 
@@ -45,6 +47,7 @@ class BlockParseJob {
 
         const blocks: BlockObject[] = [];
         let currentHeight: number = this.lastSafeHeight + 1;
+        let lastBlockProcessed: BlockObject | undefined = this.lastBlockProcessed;
 
         const errorFn = (e: Error) => {
 
@@ -72,8 +75,16 @@ class BlockParseJob {
                 throw (new Error('Non sequential block found'));
               }
 
-              const b: BlockObject = this.parseBlock(blockBytes);
-              blocks.push(b);
+              const currentBlock: BlockObject = this.parseBlock(blockBytes);
+              const currentBlockPreHash: string = currentBlock.blockHeader.preHash;
+              const lastSafeBlockHash: string = lastBlockProcessed ? lastBlockProcessed.blockHeader.hash : currentBlock.blockHeader.preHash;
+
+              if (currentBlockPreHash !== lastSafeBlockHash) {
+                throw (new Error('Non valid preHash found'));
+              }
+
+              blocks.push(currentBlock);
+              lastBlockProcessed = currentBlock;
               currentHeight++;
 
             } catch (e) {
