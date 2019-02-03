@@ -12,7 +12,7 @@ class BlockFetchJob {
   // static roundsToCheckMissed = 1000;
   static timeToCheckMissed = 1000 * 10;
   static blocksToCheck = 10000;
-  static parallelBlocks = 50;
+  static parallelBlocks = 20;
 
   private missedBlocks: OrderedSet<number> = OrderedSet<number>();
   private lastSafeHeight: number = -1;
@@ -33,7 +33,7 @@ class BlockFetchJob {
 
         this.topHeight = await nulsService.getLastHeight();
 
-        if (this.currentHeight < this.topHeight || this.missedBlocks.size > 0) {
+        if (this.currentHeight <= this.topHeight || this.missedBlocks.size > 0) {
 
           logger.debug(`Fetching blocks from [${this.currentHeight}] to [${this.topHeight}], and (${this.missedBlocks.size}) missed`);
 
@@ -90,13 +90,13 @@ class BlockFetchJob {
 
     if (!this.checkingMissedStream) {
 
-      logger.debug(`Checking blocks from height [${this.lastSafeHeight}]`);
+      logger.debug(`Checking blocks from height [${currentKey}]`);
 
       this.checkingMissedStream = (await levelDb.subscribeToBlockBytes({
         keys: true,
         values: false,
-        gt: this.lastSafeHeight,
-        lte: this.lastSafeHeight + BlockFetchJob.blocksToCheck
+        gte: currentKey,
+        lt: this.lastSafeHeight + BlockFetchJob.blocksToCheck
       }))
         .on('data', async (key: string) => {
 

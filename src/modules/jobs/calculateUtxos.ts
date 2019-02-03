@@ -110,7 +110,7 @@ class CalculateUtxosJob {
 
   private async saveBatchBlocks(blocks: BlockObject[] = []) {
 
-    const bestHeight: number = blocks.length > 0 ? blocks[blocks.length - 1].blockHeader.height : this.lastSafeHeight;
+    const bestHeight: number = blocks.length > 0 ? blocks[blocks.length - 1].height : this.lastSafeHeight;
 
     if (bestHeight > this.lastSafeHeight) {
 

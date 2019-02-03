@@ -16,7 +16,7 @@ export async function getBlock(height: number): Promise<BlockObject> {
 
 export async function putBlock(block: BlockObject): Promise<void> {
 
-  const k = getBlockNumberKey(block.blockHeader.height);
+  const k = getBlockNumberKey(block.height);
 
   const db = await levelDb.connect(config.level.databases.heightBlock);
   await db.put(k, block);
@@ -25,7 +25,7 @@ export async function putBlock(block: BlockObject): Promise<void> {
 
 export async function putBatchBlocks(blocks: BlockObject[]): Promise<void> {
 
-  const batchList: PutBatch[] = blocks.map((b: BlockObject) => ({ type: 'put' as 'put', key: getBlockNumberKey(b.blockHeader.height), value: b }));
+  const batchList: PutBatch[] = blocks.map((b: BlockObject) => ({ type: 'put' as 'put', key: getBlockNumberKey(b.height), value: b }));
 
   const db = await levelDb.connect(config.level.databases.heightBlock);
   await db.batch(batchList);

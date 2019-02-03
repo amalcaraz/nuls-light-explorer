@@ -6,22 +6,34 @@ import { sleep } from './utils';
 
 class BlockParseJob {
 
-  static batchCount: number = 1000;
+  static batchCount: number = 5000;
 
   private lastSafeHeight: number = -1;
   private blockBytesStream: NodeJS.ReadableStream;
   private lastBlockProcessed: BlockObject | undefined;
+  private currentHeight: number = 0;
+  private topHeight: number = -1;
 
   async run() {
 
     this.lastSafeHeight = await levelDb.getLastBlockHeight().catch(() => -1);
+    this.currentHeight = this.lastSafeHeight + 1;
     this.lastBlockProcessed = await levelDb.getBlock(this.lastSafeHeight).catch(() => undefined);
 
     while (true) {
 
       try {
 
-        await this.parseBlocks();
+        this.topHeight = await levelDb.getLastHeightBlockBytes().catch(() => -1);
+
+        while (this.currentHeight <= this.topHeight) {
+
+          await this.parseBlocks(this.currentHeight, Math.min(this.topHeight + 1, this.currentHeight + BlockParseJob.batchCount));
+
+        }
+
+        logger.debug(`Waiting ${config.jobs.blockTime} secs until next check`);
+        await sleep(1000 * config.jobs.blockTime + 1);
 
       } catch (e) {
 
@@ -35,7 +47,7 @@ class BlockParseJob {
 
   }
 
-  async parseBlocks() {
+  async parseBlocks(fromBlock: number, toBlock: number) {
 
     return new Promise(async (resolve, reject) => {
 
@@ -46,26 +58,26 @@ class BlockParseJob {
       } else {
 
         const blocks: BlockObject[] = [];
-        let currentHeight: number = this.lastSafeHeight + 1;
+        let currentHeight: number = fromBlock;
         let lastBlockProcessed: BlockObject | undefined = this.lastBlockProcessed;
 
-        const errorFn = (e: Error) => {
+        const errorFn = async (e: Error) => {
 
-          this.saveBatchBlocks(blocks);
           this.removeCheckMissedStream();
+          await this.saveBatchBlocks(blocks);
           reject(e);
 
         };
 
-        logger.info(`Parsing blocks from [${currentHeight}] to [${currentHeight + BlockParseJob.batchCount}]`);
+        logger.info(`Parsing blocks from [${fromBlock}] to [${toBlock}]`);
 
         this.blockBytesStream = (await levelDb.subscribeToBlockBytes({
           keys: true,
           values: true,
-          gte: currentHeight,
-          lt: currentHeight + BlockParseJob.batchCount
+          gte: fromBlock,
+          lt: toBlock
         }))
-          .on('data', async ({ key, blockBytes }) => {
+          .on('data', async ({ key, value: blockBytes }) => {
 
             try {
 
@@ -76,8 +88,10 @@ class BlockParseJob {
               }
 
               const currentBlock: BlockObject = this.parseBlock(blockBytes);
-              const currentBlockPreHash: string = currentBlock.blockHeader.preHash;
-              const lastSafeBlockHash: string = lastBlockProcessed ? lastBlockProcessed.blockHeader.hash : currentBlock.blockHeader.preHash;
+              const currentBlockPreHash: string = currentBlock.preHash;
+              const lastSafeBlockHash: string = lastBlockProcessed ? lastBlockProcessed.hash : currentBlock.preHash;
+
+              // logger.debug(`block[${currentBlock.height}]::${currentBlockPreHash} <---> ${lastSafeBlockHash}::[${lastBlockProcessed ? lastBlockProcessed.height : 'undefined'}]lastBlock`);
 
               if (currentBlockPreHash !== lastSafeBlockHash) {
                 throw (new Error('Non valid preHash found'));
@@ -97,8 +111,8 @@ class BlockParseJob {
           .on('error', errorFn)
           .on('end', async () => {
 
-            this.saveBatchBlocks(blocks);
             this.removeCheckMissedStream();
+            await this.saveBatchBlocks(blocks);
             resolve();
 
           });
@@ -121,13 +135,15 @@ class BlockParseJob {
 
   private async saveBatchBlocks(blocks: BlockObject[] = []) {
 
-    const bestHeight: number = blocks.length > 0 ? blocks[blocks.length - 1].blockHeader.height : this.lastSafeHeight;
+    const bestHeight: number = blocks.length > 0 ? blocks[blocks.length - 1].height : this.lastSafeHeight;
 
     if (bestHeight > this.lastSafeHeight) {
 
       logger.info(`New parsed blocks best height: [${bestHeight}]`);
       await levelDb.putBatchBlocks(blocks);
       this.lastSafeHeight = bestHeight;
+      this.currentHeight = bestHeight + 1;
+      this.lastBlockProcessed = blocks[blocks.length - 1];
 
     }
 
