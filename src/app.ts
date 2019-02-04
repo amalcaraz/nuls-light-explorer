@@ -1,7 +1,7 @@
 
 import api from './modules/api';
-import jobs from './modules/jobs/jobs';
-import * as db from './services/db';
+import jobs from './modules/jobs/index';
+// import * as db from './services/db';
 import logger from './services/logger';
 
 export async function run() {
@@ -28,7 +28,7 @@ function exitHook(err?: any) {
     logger.error(err);
   }
 
-  db.close();
+  // db.close();
   process.exit(0);
 
 }

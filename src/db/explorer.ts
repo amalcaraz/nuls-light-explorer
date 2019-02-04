@@ -4,7 +4,7 @@ import * as db from '../services/db';
 import { ConsensusModel } from '../models/consensus';
 import { blockHeight } from '../models/common';
 import { Block } from '../models/block';
-import { BaseTransaction } from '../models/transaction';
+import { Transaction } from '../models/transaction';
 
 const database: string = config.db.database;
 const blocksCollection: string = config.db.collections.blocks;
@@ -73,7 +73,7 @@ export async function getBlocks(filters?: Object): Promise<Block[]> {
 
 }
 
-export async function getTransactions(filters?: Object): Promise<BaseTransaction[]> {
+export async function getTransactions(filters?: Object): Promise<Transaction[]> {
 
   const coll: Collection = await _getCollection(transactionsCollection);
 

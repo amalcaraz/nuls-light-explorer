@@ -1,11 +1,11 @@
 import * as levelDb from '../../services/level';
 import config from '../../services/config';
-import { BlockObject } from 'nuls-js';
 import { getBlockNumberKey } from '../../modules/jobs/utils';
 import { AbstractIteratorOptions, PutBatch } from 'abstract-leveldown';
 import { getLastKey } from './common';
+import { BlockDb } from '../../models/block';
 
-export async function getBlock(height: number): Promise<BlockObject> {
+export async function getBlock(height: number): Promise<BlockDb> {
 
   const k = getBlockNumberKey(height);
 
@@ -14,7 +14,7 @@ export async function getBlock(height: number): Promise<BlockObject> {
 
 }
 
-export async function putBlock(block: BlockObject): Promise<void> {
+export async function putBlock(block: BlockDb): Promise<void> {
 
   const k = getBlockNumberKey(block.height);
 
@@ -23,28 +23,14 @@ export async function putBlock(block: BlockObject): Promise<void> {
 
 }
 
-export async function putBatchBlocks(blocks: BlockObject[]): Promise<void> {
+export async function putBatchBlocks(blocks: BlockDb[]): Promise<void> {
 
-  const batchList: PutBatch[] = blocks.map((b: BlockObject) => ({ type: 'put' as 'put', key: getBlockNumberKey(b.height), value: b }));
+  const batchList: PutBatch[] = blocks.map((b: BlockDb) => ({ type: 'put' as 'put', key: getBlockNumberKey(b.height), value: b }));
 
   const db = await levelDb.connect(config.level.databases.heightBlock);
   await db.batch(batchList);
 
 }
-
-// export async function getLastHeight(): Promise<number> {
-
-//   const db = await levelDb.connect(config.level.databases.common);
-//   return await db.get('lastHeight');
-
-// }
-
-// export async function putLastHeight(height: number): Promise<void> {
-
-//   const db = await levelDb.connect(config.level.databases.common);
-//   await db.put('lastHeight', height);
-
-// }
 
 export async function getLastBlockHeight(): Promise<number> {
 

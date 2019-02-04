@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
 import * as domain from '../domain/explorer';
-import { txHash } from '../models';
 
 export async function getBlockController(req: Request, res: Response, next: NextFunction) {
 
@@ -8,7 +7,18 @@ export async function getBlockController(req: Request, res: Response, next: Next
 
   return domain
     .getBlock(height)
-    .then((response: any) => res.send(response))
+    .then(res.send.bind(res))
+    .catch(next);
+
+}
+
+export async function getTransactionController(req: Request, res: Response, next: NextFunction) {
+
+  const hash: string = req.params.hash;
+
+  return domain
+    .getTransaction(hash)
+    .then(res.send.bind(res))
     .catch(next);
 
 }
@@ -17,7 +27,7 @@ export async function broadcastTransactionController(req: Request, res: Response
 
   return domain
     .broadcastTransaction(req.body)
-    .then((response: txHash) => res.send(response))
+    .then(res.send.bind(res))
     .catch(next);
 
 }

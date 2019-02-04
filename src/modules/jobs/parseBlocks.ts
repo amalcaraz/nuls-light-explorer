@@ -1,8 +1,10 @@
+import { TransactionDb, Transaction } from './../../models/transaction';
 import logger from '../../services/logger';
 import { Block, BlockObject } from 'nuls-js';
 import * as levelDb from '../../db/level';
 import config from '../../services/config';
 import { sleep } from './utils';
+import { BlockDb } from '../../models/block';
 
 class BlockParseJob {
 
@@ -10,7 +12,7 @@ class BlockParseJob {
 
   private lastSafeHeight: number = -1;
   private blockBytesStream: NodeJS.ReadableStream;
-  private lastBlockProcessed: BlockObject | undefined;
+  private lastBlockProcessed: BlockObject | BlockDb | undefined;
   private currentHeight: number = 0;
   private topHeight: number = -1;
 
@@ -59,7 +61,7 @@ class BlockParseJob {
 
         const blocks: BlockObject[] = [];
         let currentHeight: number = fromBlock;
-        let lastBlockProcessed: BlockObject | undefined = this.lastBlockProcessed;
+        let lastBlockProcessed: BlockObject | BlockDb | undefined = this.lastBlockProcessed;
 
         const errorFn = async (e: Error) => {
 
@@ -133,19 +135,45 @@ class BlockParseJob {
 
   }
 
-  private async saveBatchBlocks(blocks: BlockObject[] = []) {
+  private async saveBatchBlocks(blocks: BlockObject[]) {
 
     const bestHeight: number = blocks.length > 0 ? blocks[blocks.length - 1].height : this.lastSafeHeight;
 
     if (bestHeight > this.lastSafeHeight) {
 
       logger.info(`New parsed blocks best height: [${bestHeight}]`);
-      await levelDb.putBatchBlocks(blocks);
+
+      const dbModels = this.getDbBlocksAndTransactions(blocks);
+      await Promise.all([
+        levelDb.putBatchBlocks(dbModels.blocks),
+        levelDb.putBatchTransactions(dbModels.transactions)
+      ]);
+
       this.lastSafeHeight = bestHeight;
       this.currentHeight = bestHeight + 1;
-      this.lastBlockProcessed = blocks[blocks.length - 1];
+      this.lastBlockProcessed = dbModels.blocks[blocks.length - 1];
 
     }
+
+  }
+
+  private getDbBlocksAndTransactions(blocks: BlockObject[]): { blocks: BlockDb[], transactions: TransactionDb[] } {
+
+    const transactions: TransactionDb[] = [];
+
+    blocks.forEach((block: BlockObject) => {
+
+      const transactionHashes = block.transactions.map((tx: Transaction) => tx.hash);
+      transactions.push(...block.transactions);
+      delete (block as BlockDb).transactions;
+      (block as BlockDb).transactionHashes = transactionHashes;
+
+    });
+
+    return {
+      blocks: blocks as BlockDb[],
+      transactions
+    };
 
   }
 
