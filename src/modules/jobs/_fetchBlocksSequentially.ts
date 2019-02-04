@@ -19,7 +19,7 @@ async function processNewBlock(currentHeight: number) {
 
 async function run() {
 
-  let lastBlockHeighProcessed = (await levelDb.getLastHeightBlockBytes().catch(() => -1)) || -1;
+  let lastBlockHeighProcessed = (await levelDb.getLastBlockBytesHeight().catch(() => -1)) || -1;
 
   while (true) {
 
@@ -35,7 +35,7 @@ async function run() {
           lastBlockHeighProcessed = currentHeight;
   
           if (currentHeight % batch === 0) {
-            await levelDb.putLastHeightBlockBytes(currentHeight); 
+            await levelDb.putLastBlockBytesHeight(currentHeight); 
           }
 
         }

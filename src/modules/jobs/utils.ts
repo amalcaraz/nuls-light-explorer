@@ -18,7 +18,7 @@ export function getBlockNumberKey(height: number): string {
 
 export async function checkConsecutiveKeys() {
 
-  const lastSafeHeight = await levelDb.getLastHeightBlockBytes().catch(() => -1);
+  const lastSafeHeight = await levelDb.getLastBlockBytesHeight().catch(() => -1);
 
   let last = 0;
   let missed: boolean = false;

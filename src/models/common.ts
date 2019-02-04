@@ -7,3 +7,5 @@ export type agentHash = hash;
 export type blockHash = hash;
 export type transactionHash = hash;
 export type address = string;
+
+export const hashLength: number = 68;

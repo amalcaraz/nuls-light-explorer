@@ -26,7 +26,7 @@ class BlockParseJob {
 
       try {
 
-        this.topHeight = await levelDb.getLastHeightBlockBytes().catch(() => -1);
+        this.topHeight = await levelDb.getLastBlockBytesHeight().catch(() => -1);
 
         while (this.currentHeight <= this.topHeight) {
 

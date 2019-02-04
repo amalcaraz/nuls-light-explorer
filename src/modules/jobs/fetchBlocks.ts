@@ -22,7 +22,7 @@ class BlockFetchJob {
 
   async run() {
 
-    this.lastSafeHeight = await levelDb.getLastHeightBlockBytes().catch(() => -1);
+    this.lastSafeHeight = await levelDb.getLastBlockBytesHeight().catch(() => -1);
     this.currentHeight = this.lastSafeHeight + 1;
 
     setInterval(() => this.checkMissedBlocks(), 1000 * config.jobs.blockTime);
@@ -170,7 +170,7 @@ class BlockFetchJob {
     if (bestHeight > this.lastSafeHeight) {
 
       logger.info(`New block bytes safe height: [${bestHeight}]`);
-      await levelDb.putLastHeightBlockBytes(bestHeight);
+      await levelDb.putLastBlockBytesHeight(bestHeight);
       this.lastSafeHeight = bestHeight;
 
     }

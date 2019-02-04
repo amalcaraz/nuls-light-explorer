@@ -21,18 +21,21 @@ app:
       common: 
         name: common
         port: 3090
+      hashHeight:
+        name: hashHeight
+        port: 3091
       heightBlock: 
         name: heightBlock
-        port: 3091
+        port: 3092
       hashTransaction: 
         name: hashTransaction
-        port: 3092
+        port: 3093
       addressUtxos:
         name: addressUtxos
-        port: 3093
+        port: 3094
       heightBlockBytes: 
         name: heightBlockBytes
-        port: 3094
+        port: 3095
   jobs:
     retryTimeout: 8
     blockTime: 10

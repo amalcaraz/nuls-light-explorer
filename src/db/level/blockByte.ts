@@ -21,14 +21,14 @@ export async function putBlockBytes(height: number, blockBytes: string): Promise
 
 }
 
-export async function getLastHeightBlockBytes(): Promise<number> {
+export async function getLastBlockBytesHeight(): Promise<number> {
   
   const db = await levelDb.connect(config.level.databases.common);
   return await db.get('lastHeightBlockBytes');
 
 }
 
-export async function putLastHeightBlockBytes(height: number): Promise<void> {
+export async function putLastBlockBytesHeight(height: number): Promise<void> {
   
   const db = await levelDb.connect(config.level.databases.common);
   await db.put('lastHeightBlockBytes', height);

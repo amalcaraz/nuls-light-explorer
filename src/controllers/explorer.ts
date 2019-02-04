@@ -1,14 +1,28 @@
 import { NextFunction, Request, Response } from 'express';
 import * as domain from '../domain/explorer';
+import { isHash } from '../utils/utils';
 
 export async function getBlockController(req: Request, res: Response, next: NextFunction) {
 
-  const height: number = parseInt(req.params.height);
+  const hashOrHeight: string = req.params.hashOrHeight;
 
-  return domain
-    .getBlock(height)
-    .then(res.send.bind(res))
-    .catch(next);
+  if (!isHash(hashOrHeight)) {
+
+    const height: number = parseInt(hashOrHeight);
+
+    return domain
+      .getBlockByHeight(height)
+      .then(res.send.bind(res))
+      .catch(next);
+
+  } else {
+
+    return domain
+      .getBlockByHash(hashOrHeight)
+      .then(res.send.bind(res))
+      .catch(next);
+
+  }
 
 }
 

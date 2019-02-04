@@ -1,10 +1,10 @@
 import * as nulsService from '../services/nuls';
 import { error } from '../utils/error';
-import { nulsBroadcastTransactionError, nulsGetBlockError } from './error';
+import { nulsBroadcastTransactionError, nulsGetBlockByHeightError, nulsGetBlockByHashError, nulsGetTransactionByHashError } from './error';
 import { txHash, Block, Transaction } from '../models';
 import * as levelDb from '../db/level';
 
-export async function getBlock(height: number): Promise<Block> {
+export async function getBlockByHeight(height: number): Promise<Block> {
 
   try {
 
@@ -12,7 +12,22 @@ export async function getBlock(height: number): Promise<Block> {
 
   } catch (e) {
 
-    throw error(nulsGetBlockError, e);
+    throw error(nulsGetBlockByHeightError, e);
+
+  }
+
+}
+
+export async function getBlockByHash(hash: string): Promise<Block> {
+
+  try {
+
+    const height: number = await levelDb.getBlockHeightByHash(hash);
+    return await levelDb.getBlock(height);
+
+  } catch (e) {
+
+    throw error(nulsGetBlockByHashError, e);
 
   }
 
@@ -26,7 +41,7 @@ export async function getTransaction(hash: string): Promise<Transaction> {
 
   } catch (e) {
 
-    throw error(nulsGetBlockError, e);
+    throw error(nulsGetTransactionByHashError, e);
 
   }
 
