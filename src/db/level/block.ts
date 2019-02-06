@@ -57,7 +57,7 @@ export async function getLastBlockHeight(): Promise<number> {
 
 }
 
-export async function subscribeToBlock(filters: AbstractIteratorOptions): Promise<NodeJS.ReadableStream> {
+export async function subscribeToBlocks(filters: AbstractIteratorOptions): Promise<NodeJS.ReadableStream> {
 
   let options = { ...filters };
 

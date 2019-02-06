@@ -1,4 +1,4 @@
-import logger from '../../services/logger';
+import log from '../../services/logger';
 import * as nulsService from '../../services/nuls';
 import { NulsBlockHeader } from '../../models/nuls';
 import * as levelDb from '../../db/level/blockByte';
@@ -6,6 +6,10 @@ import config from '../../services/config';
 import * as PromisePool from 'es6-promise-pool';
 import { sleep } from './utils';
 import { OrderedSet } from 'immutable';
+
+const logger = log.child({
+  pid: 'fetch-blocks'
+});
 
 class BlockFetchJob {
 
@@ -98,7 +102,7 @@ class BlockFetchJob {
         gte: currentKey,
         lt: this.lastSafeHeight + BlockFetchJob.blocksToCheck
       }))
-        .on('data', async (key: string) => {
+        .on('data', (key: string) => {
 
           // if (currentKey % 10000 === 0)
           //   logger.debug('Checking key --> ', currentKey);
@@ -198,10 +202,10 @@ class BlockFetchJob {
   }
 }
 
-async function run() {
+function run() {
 
   const job: BlockFetchJob = new BlockFetchJob();
-  await job.run();
+  job.run();
 
   // await checkConsecutiveKeys();
 

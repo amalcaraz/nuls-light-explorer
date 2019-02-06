@@ -1,4 +1,5 @@
 import * as levelDb from '../../services/level';
+import logger from '../../services/logger';
 
 export interface LevelDbConfig {
   name: string;
@@ -7,27 +8,27 @@ export interface LevelDbConfig {
 
 export async function getLastKey(dbConfig: LevelDbConfig): Promise<string> {
 
-  const db = await levelDb.connect(dbConfig);
-  const iterator = (db as any).iterator({ keys: true, values: false, reverse: true, limit: 1 });
+  try {
 
-  return new Promise<string>((resolve, reject) => {
+    const db = await levelDb.connect(dbConfig);
+    const stream = (db as any).createReadStream({ keys: true, values: false, reverse: true, limit: 1 });
 
-    iterator.next((e: Error, key: string) => {
+    return new Promise<string>((resolve, reject) => {
 
-      let error: Error = e;
+      let key: string;
 
-      iterator.end((e: Error) => {
-
-        error = e || error;
-
-        !error && key !== undefined
-          ? resolve(key)
-          : reject(error);
-
-      });
+      stream
+        .on('data', (k: string) => key = k)
+        .on('error', (e: Error) => reject(e))
+        .on('end', () => key !== undefined ? resolve(key) : reject());
 
     });
 
-  });
+  } catch (e) {
+
+    logger.error(`Error getLastKey ${e}`);
+    throw e;
+
+  }
 
 }

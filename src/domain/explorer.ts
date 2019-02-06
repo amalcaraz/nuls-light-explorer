@@ -1,37 +1,20 @@
 import * as nulsService from '../services/nuls';
 import { error } from '../utils/error';
-import { nulsBroadcastTransactionError, nulsGetBlockByHeightError, nulsGetBlockByHashError, nulsGetTransactionByHashError } from './error';
-import { txHash, Block, Transaction } from '../models';
+import { nulsBroadcastTransactionError, nulsGetTransactionByHashError } from './error';
+import { txHash, Transaction } from '../models';
 import * as levelDb from '../db/level';
 
-export async function getBlockByHeight(height: number): Promise<Block> {
+export {
+  getBlockByHeight,
+  getBlockByHash,
+  getFullBlockByHeight,
+  getFullBlockByHash
+} from './block';
 
-  try {
-
-    return await levelDb.getBlock(height);
-
-  } catch (e) {
-
-    throw error(nulsGetBlockByHeightError, e);
-
-  }
-
-}
-
-export async function getBlockByHash(hash: string): Promise<Block> {
-
-  try {
-
-    const height: number = await levelDb.getBlockHeightByHash(hash);
-    return await levelDb.getBlock(height);
-
-  } catch (e) {
-
-    throw error(nulsGetBlockByHashError, e);
-
-  }
-
-}
+export {
+  getUtxos,
+  getBalance
+} from './utxos';
 
 export async function getTransaction(hash: string): Promise<Transaction> {
 

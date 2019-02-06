@@ -36,7 +36,7 @@ export async function connect(dbConf: any): Promise<LevelUp> {
 
       } else {
 
-        logger.error('PEPE');
+        logger.error(e);
         throw e;
 
       }

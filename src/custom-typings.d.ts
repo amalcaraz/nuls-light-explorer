@@ -27,3 +27,8 @@ declare module 'multilevel' {
   const any: any;
   export = any;
 }
+
+declare module 'multilevel/msgpack' {
+  const any: any;
+  export = any;
+}

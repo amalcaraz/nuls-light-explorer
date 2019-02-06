@@ -9,3 +9,5 @@ export type transactionHash = hash;
 export type address = string;
 
 export const hashLength: number = 68;
+
+export const BlOCKHEIGHT_TIME_DIVIDE: number = 1000000000000;

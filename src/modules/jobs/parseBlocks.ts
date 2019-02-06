@@ -1,10 +1,15 @@
-import { TransactionDb, Transaction } from './../../models/transaction';
-import logger from '../../services/logger';
+import { TransactionDb } from './../../models/transaction';
+import log from '../../services/logger';
 import { Block, BlockObject } from 'nuls-js';
 import * as levelDb from '../../db/level';
 import config from '../../services/config';
 import { sleep } from './utils';
 import { BlockDb } from '../../models/block';
+import { splitBlock } from '../../domain/block';
+
+const logger = log.child({
+  pid: 'parse-blocks'
+});
 
 class BlockParseJob {
 
@@ -65,7 +70,7 @@ class BlockParseJob {
 
         const errorFn = async (e: Error) => {
 
-          this.removeCheckMissedStream();
+          this.removeBlockBytesStream();
           await this.saveBatchBlocks(blocks);
           reject(e);
 
@@ -79,7 +84,7 @@ class BlockParseJob {
           gte: fromBlock,
           lt: toBlock
         }))
-          .on('data', async ({ key, value: blockBytes }) => {
+          .on('data', ({ key, value: blockBytes }) => {
 
             try {
 
@@ -113,7 +118,7 @@ class BlockParseJob {
           .on('error', errorFn)
           .on('end', async () => {
 
-            this.removeCheckMissedStream();
+            this.removeBlockBytesStream();
             await this.saveBatchBlocks(blocks);
             resolve();
 
@@ -124,7 +129,7 @@ class BlockParseJob {
 
   }
 
-  private removeCheckMissedStream() {
+  private removeBlockBytesStream() {
 
     if (this.blockBytesStream) {
 
@@ -143,7 +148,7 @@ class BlockParseJob {
 
       logger.info(`New parsed blocks best height: [${bestHeight}]`);
 
-      const dbModels = this.getDbBlocksAndTransactions(blocks);
+      const dbModels = this.splitBlocks(blocks);
       await Promise.all([
         levelDb.putBatchBlocks(dbModels.blocks),
         levelDb.putBatchTransactions(dbModels.transactions)
@@ -157,21 +162,22 @@ class BlockParseJob {
 
   }
 
-  private getDbBlocksAndTransactions(blocks: BlockObject[]): { blocks: BlockDb[], transactions: TransactionDb[] } {
+  private splitBlocks(blockObjs: BlockObject[]): { blocks: BlockDb[], transactions: TransactionDb[] } {
 
+    const blocks: BlockDb[] = [];
     const transactions: TransactionDb[] = [];
 
-    blocks.forEach((block: BlockObject) => {
+    blockObjs.forEach((blockObj: BlockObject) => {
 
-      const transactionHashes = block.transactions.map((tx: Transaction) => tx.hash);
-      transactions.push(...block.transactions);
-      delete (block as BlockDb).transactions;
-      (block as BlockDb).transactionHashes = transactionHashes;
+      const { block: blk, transactions: txs } = splitBlock(blockObj);
+
+      blocks.push(blk);
+      transactions.push(...txs);
 
     });
 
     return {
-      blocks: blocks as BlockDb[],
+      blocks,
       transactions
     };
 
@@ -191,10 +197,10 @@ class BlockParseJob {
 
 }
 
-async function run() {
+function run() {
 
   const job: BlockParseJob = new BlockParseJob();
-  await job.run();
+  job.run();
 
 }
 

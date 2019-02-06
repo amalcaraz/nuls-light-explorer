@@ -1,7 +1,7 @@
 env:
 app:
-  application: 'nuls-light-explorer'
-  hostname: 'localhost'
+  application: 'NLE'
+  hostname: 'local'
   server:
     host: 'http://localhost:3000'
     port: 3000

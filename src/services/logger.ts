@@ -8,6 +8,7 @@ const pino = pinoLib({
 
 export const logger: pinoLib.Logger = pino.child({
   hostname: config.hostname,
+  pid: 'master',
   level: config.logger.logLevel,
 });
 
