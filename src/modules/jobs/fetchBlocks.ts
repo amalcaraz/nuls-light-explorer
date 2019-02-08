@@ -14,9 +14,9 @@ const logger = log.child({
 class BlockFetchJob {
 
   // static roundsToCheckMissed = 1000;
-  static timeToCheckMissed = 1000 * 10;
+  static timeToCheckMissed = 1000 * config.jobs.blockTime;
   static blocksToCheck = 10000;
-  static parallelBlocks = 20;
+  static parallelBlocks = 10;
 
   private missedBlocks: OrderedSet<number> = OrderedSet<number>();
   private lastSafeHeight: number = -1;
@@ -39,7 +39,7 @@ class BlockFetchJob {
 
         if (this.currentHeight <= this.topHeight || this.missedBlocks.size > 0) {
 
-          logger.debug(`Fetching blocks from [${this.currentHeight}] to [${this.topHeight}], and (${this.missedBlocks.size}) missed`);
+          // logger.debug(`Fetching blocks from [${this.currentHeight}] to [${this.topHeight}], and (${this.missedBlocks.size}) missed`);
 
           const promiseIterator: any = this.missedBlocksGenerator();
           const pool = new PromisePool(promiseIterator, BlockFetchJob.parallelBlocks);
@@ -77,7 +77,7 @@ class BlockFetchJob {
 
     } catch (e) {
 
-      // logger.debug(`--> Error fetching block [${currentHeight}], add to pending...`);
+      logger.debug(`--> Error fetching block [${currentHeight}], add to pending...`);
       this.missedBlocks = this.missedBlocks.add(currentHeight);
 
     }
@@ -88,13 +88,19 @@ class BlockFetchJob {
 
   async checkMissedBlocks() {
 
-    let bestHeight: number = -1;
-    let currentKey: number = this.lastSafeHeight + 1;
-    let firstMissedBlockFound: boolean;
-
     if (!this.checkingMissedStream) {
 
-      logger.debug(`Checking blocks from height [${currentKey}]`);
+      let bestHeight: number = -1;
+      let currentKey: number = this.lastSafeHeight + 1;
+
+      // logger.debug(`Checking blocks from height [${currentKey}]`);
+
+      const endFn = async () => {
+
+        this.removeCheckMissedStream();
+        await this.saveSafestHeight(bestHeight);
+
+      };
 
       this.checkingMissedStream = (await levelDb.subscribeToBlockBytes({
         keys: true,
@@ -111,29 +117,12 @@ class BlockFetchJob {
 
           if (k > currentKey) {
 
-            const fromHeight: number = currentKey;
-
-            if (!firstMissedBlockFound) {
-
-              firstMissedBlockFound = true;
-              bestHeight = currentKey - 1;
-
-            }
-
-            while (k > currentKey) {
-
-              this.missedBlocks = this.missedBlocks.add(currentKey);
-              currentKey++;
-
-            }
-
-            logger.debug(`Adding missed heights from [${fromHeight}] to [${currentKey - 1}]`);
+            bestHeight = currentKey - 1;
+            endFn();
 
           } else {
 
-            if (!firstMissedBlockFound) {
-              bestHeight = currentKey;
-            }
+            bestHeight = currentKey;
             currentKey++;
 
           }
@@ -145,14 +134,7 @@ class BlockFetchJob {
           throw new Error('Error processing last safe height');
 
         })
-        .on('end', async () => {
-
-          // logger.debug('Finishing processing last safe height');
-
-          await this.saveSafestHeight(bestHeight);
-          this.removeCheckMissedStream();
-
-        });
+        .on('end', endFn);
 
     }
 

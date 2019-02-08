@@ -1,8 +1,11 @@
-import { TransactionType, TransactionObject } from 'nuls-js';
+import { TransactionType, TransactionObject, CoinOutputObject, CoinInputObject } from 'nuls-js';
 
 export { TransactionType };
 
-export type Transaction = TransactionObject 
+export type TransactionOutput = CoinOutputObject;
+export type TransactionInput = CoinInputObject;
+
+export type Transaction = TransactionObject
 export type TransactionDb = Transaction;
 
 export enum TransactionStatus {

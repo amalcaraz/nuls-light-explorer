@@ -68,9 +68,16 @@ export async function getFullBlockByHash(hash: string): Promise<Block> {
 
 export async function getFullBlock(block: BlockDb): Promise<Block> {
 
-  const transactions: TransactionDb[] = await Promise.all(
-    block.transactionHashes.map((txHash: string) => levelDb.getTransaction(txHash))
-  );
+  // const transactions: TransactionDb[] = await Promise.all(
+  //   block.transactionHashes.map((txHash: string) => levelDb.getTransaction(txHash))
+  // );
+
+  const transactions: TransactionDb[] = []
+
+  for (const txHash of block.transactionHashes) {
+    const tx: TransactionDb = await levelDb.getTransaction(txHash);
+    transactions.push(tx);
+  }
 
   return joinBlock(block, transactions);
 

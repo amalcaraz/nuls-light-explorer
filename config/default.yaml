@@ -6,8 +6,7 @@ app:
     host: 'http://localhost:3000'
     port: 3000
   nuls:
-    # host: http://nuls:8001
-    host: http://localhost:8001
+    host: http://localhost:6001
     base: '/api'
     resources: 
       getLastHeight: /block/newest/height
@@ -15,8 +14,7 @@ app:
       getBlockBytes: /block/bytes?hash=__BLOCK_HASH__
       broadcastTx: /accountledger/transaction/broadcast
   level:
-    # path: /data/nuls-light-explorer
-    path: /Users/amalcaraz/data/nuls-light-explorer-rocks
+    path: /data/nuls-light-explorer
     databases:
       common: 
         name: common

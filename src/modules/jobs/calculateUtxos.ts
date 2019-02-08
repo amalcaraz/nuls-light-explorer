@@ -1,5 +1,5 @@
 import { UtxosDb } from './../../models/utxos';
-import { Transaction, TransactionDb } from './../../models/transaction';
+import { TransactionOutput } from './../../models/transaction';
 import log from '../../services/logger';
 import * as levelDb from '../../db/level';
 import config from '../../services/config';
@@ -14,14 +14,14 @@ const logger = log.child({
 
 class CalculateUtxosJob {
 
-  static batchCount: number = 5000;
+  static batchCount: number = 2000;
 
   private lastSafeHeight: number = -1;
   private blocksStream: NodeJS.ReadableStream;
   private currentHeight: number = 0;
   private topHeight: number = -1;
   private currentUtxos: Record<address, UtxosDb> = {};
-  private currentTxs: Record<string, Transaction> = {};
+  // private currentTxsOutputs: Record<string, TransactionOutput[]> = {};
 
   async run() {
 
@@ -79,7 +79,7 @@ class CalculateUtxosJob {
 
         };
 
-        logger.info(`Processing utxos from [${fromBlock}] to [${toBlock}]`);
+        // logger.info(`Processing utxos from [${fromBlock}] to [${toBlock}]`);
 
         this.blocksStream = (await levelDb.subscribeToBlocks({
           keys: true,
@@ -94,8 +94,6 @@ class CalculateUtxosJob {
               try {
 
                 const k: number = parseInt(key);
-
-                // logger.debug(` -------> ${k}`);
 
                 if (k > currentHeight) {
                   throw (new Error('Non sequential block found'));
@@ -153,8 +151,9 @@ class CalculateUtxosJob {
       await levelDb.putBatchUtxos(this.currentUtxos);
 
       // TODO: Think a better way to improve performance
+      
       this.currentUtxos = {};
-      // this.currentTxs = {};
+      // this.currentTxsOutputs = {};
 
       this.lastSafeHeight = bestHeight;
       this.currentHeight = bestHeight + 1;
@@ -188,17 +187,14 @@ class CalculateUtxosJob {
 
       for (let input of tx.inputs) {
 
-        const outputTx = await this.getTransaction(input.fromHash);
-
-        const output = outputTx.outputs[input.fromIndex];
-
+        const txOutputs = await this.getTransactionOutputs(input.fromHash);
+        const output = txOutputs[input.fromIndex];
         const utxos = await this.getUtxos(output.address);
 
         const i = utxos.findIndex((utxo) => utxo.fromHash === input.fromHash && utxo.fromIndex === input.fromIndex);
 
         if (i >= 0) {
 
-          // this.currentUtxos[output.address].splice(i, 1);
           utxos.splice(i, 1);
 
         }
@@ -229,15 +225,18 @@ class CalculateUtxosJob {
 
   }
 
-  private async getTransaction(txHash: string): Promise<TransactionDb> {
+  private async getTransactionOutputs(txHash: string): Promise<TransactionOutput[]> {
 
-    if (!this.currentTxs[txHash]) {
+    return (await levelDb.getTransaction(txHash)).outputs;
 
-      this.currentTxs[txHash] = await levelDb.getTransaction(txHash);
+    // if (!this.currentTxsOutputs[txHash]) {
 
-    }
+    //   const tx = await levelDb.getTransaction(txHash);
+    //   this.currentTxsOutputs[txHash] = tx.outputs;
 
-    return this.currentTxs[txHash];
+    // }
+
+    // return this.currentTxsOutputs[txHash];
 
   }
 }

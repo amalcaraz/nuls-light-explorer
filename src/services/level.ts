@@ -7,6 +7,7 @@ import encode from 'encoding-down';
 import * as multilevel from 'multilevel';
 import * as net from 'net';
 import logger from './logger';
+import * as fs from 'fs';
 
 let _client: Record<string, Promise<LevelUp>> = {
 };
@@ -22,7 +23,7 @@ export async function connect(dbConf: any): Promise<LevelUp> {
 
   _client[dbName] = new Promise(async (resolve, reject) => {
 
-    logger.debug(`connecting to -> ${dbName}`);
+    // logger.debug(`connecting to -> ${dbName}`);
 
     try {
 
@@ -72,7 +73,11 @@ export async function serverConnect(dbName: string, dbPort: number): Promise<any
 
   return new Promise((resolve, reject) => {
 
-    logger.debug('SERVER CONNECTION');
+    // logger.debug('SERVER CONNECTION');
+
+    if (!fs.existsSync(config.level.path)) {
+      fs.mkdirSync(config.level.path, {recursive: true});
+    }
 
     const p: string = path.join(config.level.path, dbName);
     const db: LevelUp<any> = levelup(encode(rocksdb(p), { valueEncoding: 'json' }));
@@ -95,9 +100,10 @@ export async function clientConnect(dbPort: number): Promise<any> {
 
   return new Promise((resolve, reject) => {
 
-    logger.debug('CLIENT CONNECTION');
+    // logger.debug('CLIENT CONNECTION');
 
     const client = multilevel.client();
+    client.on('error', (e: any) => logger.error(e));
     multilevelPromiseWrapper(client);
 
     const rpc = client.createRpcStream();

@@ -13,7 +13,7 @@ const logger = log.child({
 
 class BlockParseJob {
 
-  static batchCount: number = 5000;
+  static batchCount: number = 1000;
 
   private lastSafeHeight: number = -1;
   private blockBytesStream: NodeJS.ReadableStream;
@@ -76,7 +76,7 @@ class BlockParseJob {
 
         };
 
-        logger.info(`Parsing blocks from [${fromBlock}] to [${toBlock}]`);
+        // logger.info(`Parsing blocks from [${fromBlock}] to [${toBlock}]`);
 
         this.blockBytesStream = (await levelDb.subscribeToBlockBytes({
           keys: true,
@@ -110,6 +110,7 @@ class BlockParseJob {
 
             } catch (e) {
 
+              logger.error(`Error parsing block height [${currentHeight}]`);
               errorFn(e);
 
             }
@@ -149,10 +150,12 @@ class BlockParseJob {
       logger.info(`New parsed blocks best height: [${bestHeight}]`);
 
       const dbModels = this.splitBlocks(blocks);
-      await Promise.all([
-        levelDb.putBatchBlocks(dbModels.blocks),
-        levelDb.putBatchTransactions(dbModels.transactions)
-      ]);
+
+      await levelDb.putBatchTransactions(dbModels.transactions);
+      await levelDb.putBatchBlocks(dbModels.blocks);
+
+      // TODO: Think if this is needed
+      blocks = [];
 
       this.lastSafeHeight = bestHeight;
       this.currentHeight = bestHeight + 1;
