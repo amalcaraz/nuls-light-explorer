@@ -18,7 +18,7 @@ async function run() {
   // This is the most disk I/O expensive job, so it has to run first in order to take control of the leveldb server improving the performance
   process.push(fork(__dirname + '/calculateUtxos.js', forkArgs));
 
-  process.push(fork(__dirname + '/fetchBlocks.js', forkArgs));
+  // process.push(fork(__dirname + '/fetchBlocks.js', forkArgs));
   process.push(fork(__dirname + '/parseBlocks.js', forkArgs));
 
   // fetchBlocks();

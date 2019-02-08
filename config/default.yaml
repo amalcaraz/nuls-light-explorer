@@ -12,6 +12,8 @@ app:
       getLastHeight: /block/newest/height
       getBlock: /block/header/height/__BLOCK_HEIGHT__
       getBlockBytes: /block/bytes?hash=__BLOCK_HASH__
+      contractInfo: /contract/info/__ADDRESS__
+      contractView: /contract/view
       broadcastTx: /accountledger/transaction/broadcast
   level:
     path: /data/nuls-light-explorer

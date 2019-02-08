@@ -3,6 +3,7 @@ import { validate } from 'express-jsonschema';
 import { readFileSync } from 'fs';
 import * as path from 'path';
 import { broadcastTransactionController, getBlockController, getTransactionController, getUtxosController, getBalanceController } from '../controllers/explorer';
+import contractRouter from './contract';
 
 export const router = ExpressRouter();
 
@@ -14,6 +15,7 @@ router
   .get('/transaction/:hash', getTransactionController)
   .get('/utxos/:address', getUtxosController)
   .get('/balance/:address', getBalanceController)
-  .post('/broadcast', validate({ body: broadcastTransactionSchema }), broadcastTransactionController);
+  .post('/broadcast', validate({ body: broadcastTransactionSchema }), broadcastTransactionController)
+  .use('/contract', contractRouter);
 
 export default router;

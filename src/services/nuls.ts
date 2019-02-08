@@ -3,6 +3,7 @@ import config from './config';
 import { error } from '../utils/error';
 import { txHash } from '../models';
 import { NulsResponse, NulsBlockHeader, NulsBlockHeaderResponse } from '../models/nuls';
+import { ContractMethodsResponse, ContractViewResponse, ContractViewRequest } from '../models/contract';
 
 const api: string = `${config.nuls.host}${config.nuls.base}`;
 
@@ -60,6 +61,48 @@ export async function getBlockBytes(blockHash: string): Promise<string> {
   }
 
   return response.data.value;
+
+}
+
+export async function contractMethods(address: string): Promise<ContractMethodsResponse> {
+
+  const url: string = `${api}${config.nuls.resources.contractInfo}`.replace('__ADDRESS__', address);
+  let response: NulsResponse;
+
+  try {
+
+    response = await request.get(url, { json: true });
+
+  } catch (e) {
+
+    throw error(e);
+
+  }
+
+  return response.data.method;
+
+}
+
+// TODO: some errors are returned as 200 OK from node api (map them throwing errors)
+export async function contractView(body: ContractViewRequest): Promise<ContractViewResponse> {
+
+  const url: string = `${api}${config.nuls.resources.contractView}`;
+  let response: NulsResponse;
+
+  try {
+
+    response = await request.post(url, {
+      json: true,
+      body,
+    });
+
+  } catch (e) {
+
+    throw error(e);
+
+  }
+
+  return response.data;
 
 }
 
