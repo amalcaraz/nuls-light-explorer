@@ -3,7 +3,7 @@ import config from './config';
 import { error } from '../utils/error';
 import { txHash } from '../models';
 import { NulsResponse, NulsBlockHeader, NulsBlockHeaderResponse } from '../models/nuls';
-import { ContractMethodsResponse, ContractViewResponse, ContractViewRequest } from '../models/contract';
+import { ContractMethodsResponse, ContractViewResponse, ContractViewRequest, ContractCallGasRequest, ContractCallValidateRequest, ContractCallValidateResponse, ContractCallGasResponse } from '../models/contract';
 
 const api: string = `${config.nuls.host}${config.nuls.base}`;
 
@@ -15,6 +15,8 @@ export async function getLastHeight(): Promise<number> {
   try {
 
     response = await request.get(url, { json: true });
+
+    check200Error(response);
 
   } catch (e) {
 
@@ -35,6 +37,8 @@ export async function getBlockHeader(height: number): Promise<NulsBlockHeader> {
 
     response = await request.get(url, { json: true });
 
+    check200Error(response);
+
   } catch (e) {
 
     throw error(e);
@@ -53,6 +57,8 @@ export async function getBlockBytes(blockHash: string): Promise<string> {
   try {
 
     response = await request.get(url, { json: true });
+
+    check200Error(response);
 
   } catch (e) {
 
@@ -73,6 +79,8 @@ export async function contractMethods(address: string): Promise<ContractMethodsR
 
     response = await request.get(url, { json: true });
 
+    check200Error(response);
+
   } catch (e) {
 
     throw error(e);
@@ -83,7 +91,6 @@ export async function contractMethods(address: string): Promise<ContractMethodsR
 
 }
 
-// TODO: some errors are returned as 200 OK from node api (map them throwing errors)
 export async function contractView(body: ContractViewRequest): Promise<ContractViewResponse> {
 
   const url: string = `${api}${config.nuls.resources.contractView}`;
@@ -95,6 +102,56 @@ export async function contractView(body: ContractViewRequest): Promise<ContractV
       json: true,
       body,
     });
+
+    check200Error(response);
+
+  } catch (e) {
+
+    throw error(e);
+
+  }
+
+  return response.data;
+
+}
+
+export async function contractCallValidate(body: ContractCallValidateRequest): Promise<ContractCallValidateResponse> {
+
+  const url: string = `${api}${config.nuls.resources.contractCallValidate}`;
+  let response: NulsResponse;
+
+  try {
+
+    response = await request.post(url, {
+      json: true,
+      body,
+    });
+
+    check200Error(response);
+
+  } catch (e) {
+
+    throw error(e);
+
+  }
+
+  return response.success;
+
+}
+
+export async function contractCallGas(body: ContractCallGasRequest): Promise<ContractCallGasResponse> {
+
+  const url: string = `${api}${config.nuls.resources.contractCallGas}`;
+  let response: NulsResponse;
+
+  try {
+
+    response = await request.post(url, {
+      json: true,
+      body,
+    });
+
+    check200Error(response);
 
   } catch (e) {
 
@@ -118,6 +175,8 @@ export async function broadcastTransaction(txHex: string): Promise<txHash> {
       json: true,
     });
 
+    check200Error(response);
+
   } catch (e) {
 
     throw error(e);
@@ -126,4 +185,10 @@ export async function broadcastTransaction(txHex: string): Promise<txHash> {
 
   return response.data;
 
+}
+
+function check200Error(response: NulsResponse) {
+  if (response.data && response.data.code) {
+    throw new Error(`${response.data.code}::${response.data.msg}`);
+  }
 }

@@ -14,6 +14,8 @@ app:
       getBlockBytes: /block/bytes?hash=__BLOCK_HASH__
       contractInfo: /contract/info/__ADDRESS__
       contractView: /contract/view
+      contractCallValidate: /contract/validate/call
+      contractCallGas: /contract/imputedgas/call
       broadcastTx: /accountledger/transaction/broadcast
   level:
     path: /data/nuls-light-explorer

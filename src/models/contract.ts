@@ -33,3 +33,19 @@ export interface ContractViewRequest {
 export type ContractViewResponse = {
   result: string;
 };
+
+export interface ContractCallGasRequest extends ContractViewRequest {
+  sender: string;
+  value: number;
+  price: number;
+}
+
+export type ContractCallGasResponse = {
+  gasLimit: number;
+};
+
+export interface ContractCallValidateRequest extends ContractViewRequest {
+  gasLimit?: number;
+}
+
+export type ContractCallValidateResponse = boolean;

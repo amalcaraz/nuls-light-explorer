@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-03/schema",
+  "id": "http://jsonschema.net",
+  "description": "Call arguments of the smart contract view method on the nuls network",
+  "properties": {
+    "methodName": {
+      "type": "string",
+      "description": "The name of the method to call"
+    },
+    "methodDesc": {
+      "type": "string",
+      "description": "The description of the method to call"
+    },
+    "sender": {
+      "type": "string",
+      "description": "The address of the caller of the method"
+    },
+    "value": {
+      "type": "number",
+      "description": "The amount of nuls to send to the contract with the call"
+    },
+    "price": {
+      "type": "number",
+      "description": "The gas price of the transaction"
+    },
+    "args": {
+      "type": "array",
+      "description": "The list of arguments passed to the method to call",
+      "contains": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [ "methodName", "args", "sender", "value", "price" ]
+}
