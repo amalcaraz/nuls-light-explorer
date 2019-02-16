@@ -1,38 +1,37 @@
 #!/usr/bin/env bash
 # set -e
 
-yarn install
-yarn link nuls-js
+npm install
 
 if [ "$1" = 'dev' ]
 then
 
-    yarn run serve:dev
+    npm run serve:dev
 
 elif [ "$1" = 'test' ]
 then
 
-    yarn run test:watch
+    npm run test:watch
 
 elif [ "$1" = 'coverage' ]
 then
 
-    yarn run coverage
+    npm run coverage
 
 elif [ "$1" = 'lint' ]
 then
 
-    yarn run lint:fix
+    npm run lint:fix
 
 elif [ "$1" = 'docs' ]
 then
 
-    yarn run docs  
+    npm run docs  
 
 elif [ "$1" = 'prod' ]
 then
     
-    yarn run serve:prod
+    npm run serve:prod
 
 else
 

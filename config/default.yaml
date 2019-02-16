@@ -6,17 +6,20 @@ app:
     host: 'http://localhost:3000'
     port: 3000
   nuls:
-    host: http://localhost:6001
+    host: http://localhost:8001
     base: '/api'
     resources: 
       getLastHeight: /block/newest/height
       getBlock: /block/header/height/__BLOCK_HEIGHT__
-      getBlockBytes: /block/bytes?hash=__BLOCK_HASH__
+      getBlockBytes: /block/bytes/height?height=__BLOCK_HEIGHT__
+      getBlockBytesByHash: /block/bytes?hash=__BLOCK_HASH__
       contractInfo: /contract/info/__ADDRESS__
       contractView: /contract/view
       contractCallValidate: /contract/validate/call
       contractCallGas: /contract/imputedgas/call
       broadcastTx: /accountledger/transaction/broadcast
+      info: /network/info
+      version: /client/version
   level:
     path: /data/nuls-light-explorer
     databases:

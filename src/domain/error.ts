@@ -11,3 +11,5 @@ export const nulsContractViewError = new ExplorerError('50014', 500, 'Error call
 export const nulsContractCallValidateError = new ExplorerError('50015', 500, 'Error validating the contract call');
 export const nulsContractCallGasError = new ExplorerError('50016', 500, 'Error calculating gas limit of contract call');
 export const nulsBroadcastTransactionError = new ExplorerError('50017', 500, 'Error broadcasting a transaction');
+export const nulsGetLastHeightError = new ExplorerError('50018', 500, 'Error getting last height');
+

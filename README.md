@@ -3,7 +3,7 @@
 
 ### Requirements
 
-- [Node.js](https://nodejs.org/es/) >= v8.9.3 (npm v5.5.1)
+- [Node.js](https://nodejs.org/es/) >= v10.15.0 (npm v6.4.1)
 
 ## Using this package
 
@@ -33,9 +33,9 @@ Once you have downloaded:
 With [docker](https://www.docker.com/): 
 ```bash 
   # Build the docker image 
-  docker build -t nuls-light-explorer . 
+  docker build -f environment/prod/Dockerfile -t nuls-light-explorer . 
   # Run the docker container 
-  docker run -d -it --name nuls-light-explorer -p 80:80 nuls-light-explorer 
+  docker run -d -it --name nuls-light-explorer -p 80:3000 nuls-light-explorer 
 ``` 
 
 ### Setting up the service 
@@ -43,17 +43,17 @@ With [docker](https://www.docker.com/):
 Once the installation of the service have finished, we need to fix some environment vars. You can find all environment vars  
 availables to configure the service in `config/custom-environment-variables.yaml`. 
 
-An example of configuration of the most important vars:  
-- Nuls rpc node: 
+An example of configuration of the most important vars:
 ```bash  
-  export NULS_CLIENT_NODE_HOST="http://localhost:8001"
-```  
- 
-- Mongo ddbb host:  
-```bash
-  export NULS_LIGHT_EXPLORER_MONGO_HOST="localhost:27017"
-  export NULS_LIGHT_EXPLORER_MONGO_DATABASE="explorer"
-```  
+# Service port:
+export NLE_SERVER_PORT="3000"
+
+# Nuls rpc node:
+export NLE_NULS_HOST="http://localhost:8001"
+
+# Level db path:  
+export NLE_LEVEL_PATH="/data/nuls-light-explorer"
+```
 
 ### Contribution guidelines 
  

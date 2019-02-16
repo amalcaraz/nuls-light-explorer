@@ -44,8 +44,10 @@ export type ContractCallGasResponse = {
   gasLimit: number;
 };
 
-export interface ContractCallValidateRequest extends ContractViewRequest {
+export interface ContractCallValidateRequest extends ContractCallGasRequest {
   gasLimit?: number;
 }
 
-export type ContractCallValidateResponse = boolean;
+export type ContractCallValidateResponse = {
+  isValid: boolean;
+};

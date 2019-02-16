@@ -39,3 +39,20 @@ export interface NulsBlockHeader {
   size: number;
   scriptSig: string;
 }
+
+export interface NulsNetInfo {
+  localBestHeight: number;
+  netBestHeight: number;
+  timeOffset: string;
+  inCount: number;
+  outCount: number;
+  mastUpGrade: boolean;
+}
+
+export interface NulsClientVersion {
+  myVersion: string;
+  newestVersion: string;
+  upgradable: boolean;
+  infromation: string;
+  networkVersion: number;
+}

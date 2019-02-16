@@ -1,18 +1,18 @@
-FROM node:8.9.3
+FROM node:10.15
 
 # Move to build dir
 WORKDIR /usr/src/app
 
 # Install app dependencies
 ADD package*.json ./
-RUN yarn install
-RUN yarn cache clean --force
+RUN npm install
+RUN npm cache clean --force
 
 ENV NODE_ENV production
 
 # Build the app
 COPY . .
-RUN yarn run build:ts
+RUN npm run build:ts
 
 EXPOSE 80
 EXPOSE 9229

@@ -2,10 +2,52 @@ import * as request from 'request-promise-native';
 import config from './config';
 import { error } from '../utils/error';
 import { txHash } from '../models';
-import { NulsResponse, NulsBlockHeader, NulsBlockHeaderResponse } from '../models/nuls';
+import { NulsResponse, NulsBlockHeader, NulsBlockHeaderResponse, NulsNetInfo, NulsClientVersion } from '../models/nuls';
 import { ContractMethodsResponse, ContractViewResponse, ContractViewRequest, ContractCallGasRequest, ContractCallValidateRequest, ContractCallValidateResponse, ContractCallGasResponse } from '../models/contract';
 
 const api: string = `${config.nuls.host}${config.nuls.base}`;
+
+export async function getClientVersion(): Promise<NulsClientVersion> {
+
+  const url: string = `${api}${config.nuls.resources.version}`;
+  let response: NulsResponse;
+
+  try {
+
+    response = await request.get(url, { json: true });
+
+    check200Error(response);
+
+  } catch (e) {
+
+    throw error(e);
+
+  }
+
+  return response.data;
+
+}
+
+export async function getNetInfo(): Promise<NulsNetInfo> {
+
+  const url: string = `${api}${config.nuls.resources.info}`;
+  let response: NulsResponse;
+
+  try {
+
+    response = await request.get(url, { json: true });
+
+    check200Error(response);
+
+  } catch (e) {
+
+    throw error(e);
+
+  }
+
+  return response.data;
+
+}
 
 export async function getLastHeight(): Promise<number> {
 
@@ -49,9 +91,22 @@ export async function getBlockHeader(height: number): Promise<NulsBlockHeader> {
 
 }
 
-export async function getBlockBytes(blockHash: string): Promise<string> {
+export async function getBlockBytes(height: number): Promise<string>;
+export async function getBlockBytes(hash: string): Promise<string>;
+export async function getBlockBytes(heightOrHash: number | string): Promise<string> {
 
-  const url: string = `${api}${config.nuls.resources.getBlockBytes}`.replace('__BLOCK_HASH__', blockHash);
+  let url: string;
+
+  if (typeof heightOrHash === 'string') {
+
+    url = `${api}${config.nuls.resources.getBlockBytesByHash}`.replace('__BLOCK_HASH__', heightOrHash);
+
+  } else {
+
+    url = `${api}${config.nuls.resources.getBlockBytes}`.replace('__BLOCK_HEIGHT__', `${heightOrHash}`);
+
+  }
+
   let response: NulsResponse;
 
   try {
@@ -135,7 +190,7 @@ export async function contractCallValidate(body: ContractCallValidateRequest): P
 
   }
 
-  return response.success;
+  return { isValid: response.success };
 
 }
 

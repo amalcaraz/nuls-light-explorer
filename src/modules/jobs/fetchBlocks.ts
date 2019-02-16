@@ -17,6 +17,9 @@ class BlockFetchJob {
   static timeToCheckMissed = 1000 * config.jobs.blockTime;
   static blocksToCheck = 10000;
   static parallelBlocks = 10;
+  static fetchBlockByHeightVersion = 1
+
+  private blockBytesFlag: boolean;
 
   private missedBlocks: OrderedSet<number> = OrderedSet<number>();
   private lastSafeHeight: number = -1;
@@ -26,6 +29,7 @@ class BlockFetchJob {
 
   async run() {
 
+    this.blockBytesFlag = await this.checkVersion();
     this.lastSafeHeight = await levelDb.getLastBlockBytesHeight().catch(() => -1);
     this.currentHeight = this.lastSafeHeight + 1;
 
@@ -45,10 +49,9 @@ class BlockFetchJob {
           const pool = new PromisePool(promiseIterator, BlockFetchJob.parallelBlocks);
           await pool.start();
 
-          logger.debug(`Waiting ${config.jobs.blockTime} secs until next check`);
-
         }
 
+        logger.debug(`Waiting ${config.jobs.blockTime} secs until next check`);
         await sleep(1000 * config.jobs.blockTime + 1);
 
       } catch (e) {
@@ -63,6 +66,21 @@ class BlockFetchJob {
 
   }
 
+  // Check if current client version is greater than "minVersion"
+  async checkVersion(minVersion = '1.2.0-beta1'): Promise<boolean> {
+
+    const pattern = /^(\d+)\.(\d+)\.(\d+)($|.+)/;
+
+    const currentVersion: string = (await nulsService.getClientVersion()).myVersion;
+    const v1 = currentVersion.match(pattern);
+    const v2 = minVersion.match(pattern);
+
+    logger.debug(`is ${currentVersion} >= ${minVersion} ?`);
+
+    return !!v1 && !!v2 && (parseInt(v1[1]) >= parseInt(v2[1]) && parseInt(v1[2]) >= parseInt(v2[2]) && parseInt(v1[3]) >= parseInt(v2[3]));
+
+  }
+
   async fetchBlock(currentHeight: number): Promise<number> {
 
     try {
@@ -70,9 +88,19 @@ class BlockFetchJob {
       // if (currentHeight % 1000 === 0)
       //   logger.debug(`--> Fetching block [${currentHeight}]`);
 
-      const blockHeader: NulsBlockHeader = await nulsService.getBlockHeader(currentHeight);
-      const blockBytes: string = await nulsService.getBlockBytes(blockHeader.hash);
+      let blockBytes: string;
 
+      if (this.blockBytesFlag) {
+
+        blockBytes = await nulsService.getBlockBytes(currentHeight);
+
+      } else {
+
+        const blockHeader: NulsBlockHeader = await nulsService.getBlockHeader(currentHeight);
+        blockBytes = await nulsService.getBlockBytes(blockHeader.hash);
+
+      }
+     
       await levelDb.putBlockBytes(currentHeight, blockBytes);
 
     } catch (e) {

@@ -2,6 +2,15 @@ import { NextFunction, Request, Response } from 'express';
 import * as domain from '../domain/explorer';
 import { isHash } from '../utils/utils';
 
+export async function getLastHeightController(req: Request, res: Response, next: NextFunction) {
+
+  return domain
+    .getLastHeight()
+    .then(res.send.bind(res))
+    .catch(next);
+
+}
+
 export async function getBlockController(req: Request, res: Response, next: NextFunction) {
 
   const hashOrHeight: string = req.params.hashOrHeight;

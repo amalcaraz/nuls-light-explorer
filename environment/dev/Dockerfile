@@ -1,4 +1,4 @@
-FROM node:8.9.3
+FROM node:10.15
 LABEL MANTAINER="Angel Manzano <amalcaraz89@gmail.com>"
 
 # Update system dependencies
@@ -16,9 +16,9 @@ RUN apt-get update && \
 # Install app dependencies
 WORKDIR /code
 # ADD package*.json ./
-# RUN yarn install
+# RUN npm install
 # COPY . .
-# RUN yarn run build:ts
+# RUN npm run build:ts
 
 # USER node
 

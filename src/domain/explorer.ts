@@ -1,6 +1,6 @@
 import * as nulsService from '../services/nuls';
 import { error } from '../utils/error';
-import { nulsBroadcastTransactionError, nulsGetTransactionByHashError } from './error';
+import { nulsBroadcastTransactionError, nulsGetTransactionByHashError, nulsGetLastHeightError } from './error';
 import { txHash, Transaction } from '../models';
 import * as levelDb from '../db/level';
 
@@ -15,6 +15,21 @@ export {
   getUtxos,
   getBalance
 } from './utxos';
+
+export async function getLastHeight(): Promise<[number]> {
+
+  try {
+
+    // return [await nulsService.getLastHeight()];
+    return [await levelDb.getLastBlockHeight().catch(() => -1)];
+
+  } catch (e) {
+
+    throw error(nulsGetLastHeightError, e);
+
+  }
+
+}
 
 export async function getTransaction(hash: string): Promise<Transaction> {
 
