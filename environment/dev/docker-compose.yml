@@ -7,7 +7,7 @@ services:
     image: light-explorer
     container_name: light-explorer
     environment:
-      NLE_LEVEL_PATH="/data/nuls-light-explorer"
+      - NLE_LEVEL_PATH=/data/nuls-light-explorer
     volumes:
       - ../..:/code
       - ~/data/nuls-light-explorer:/data/nuls-light-explorer
