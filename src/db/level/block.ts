@@ -1,8 +1,7 @@
 import * as levelDb from '../../services/level';
 import config from '../../services/config';
-import { getBlockNumberKey } from '../../modules/jobs/utils';
-import { AbstractIteratorOptions, PutBatch } from 'abstract-leveldown';
-import { getLastKey } from './common';
+import { AbstractIteratorOptions, PutBatch, DelBatch } from 'abstract-leveldown';
+import { getLastKey, getBlockNumberKey } from './common';
 import { BlockDb } from '../../models/block';
 
 export async function getBlock(height: number): Promise<BlockDb> {
@@ -41,6 +40,35 @@ export async function putBatchBlocks(blocks: BlockDb[]): Promise<void> {
     const k = getBlockNumberKey(block.height);
     blocksBatchList.push({ type: 'put' as 'put', key: k, value: block });
     hashesBatchList.push({ type: 'put' as 'put', key: block.hash, value: block.height });
+  });
+
+  await Promise.all([
+    levelDb.connect(config.level.databases.heightBlock).then((db) => db.batch(blocksBatchList)),
+    levelDb.connect(config.level.databases.hashHeight).then((db) => db.batch(hashesBatchList)),
+  ]);
+
+}
+
+export async function deleteBlock(block: BlockDb): Promise<void> {
+
+  const k = getBlockNumberKey(block.height);
+
+  await Promise.all([
+    levelDb.connect(config.level.databases.heightBlock).then((db) => db.del(k)),
+    levelDb.connect(config.level.databases.hashHeight).then((db) => db.del(block.hash)),
+  ]);
+
+}
+
+export async function deleteBatchBlocks(blocks: BlockDb[]): Promise<void> {
+
+  const blocksBatchList: DelBatch[] = [];
+  const hashesBatchList: DelBatch[] = [];
+
+  blocks.forEach((block: BlockDb) => {
+    const k = getBlockNumberKey(block.height);
+    blocksBatchList.push({ type: 'del' as 'del', key: k });
+    hashesBatchList.push({ type: 'del' as 'del', key: block.hash });
   });
 
   await Promise.all([

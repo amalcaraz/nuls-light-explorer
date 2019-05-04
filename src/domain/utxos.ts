@@ -1,7 +1,7 @@
 import { BlOCKHEIGHT_TIME_DIVIDE, address, na } from '../models/common';
 import { UtxosDb, UtxoDb } from '../models/utxos';
 import * as nulsService from '../services/nuls';
-import * as levelDb from '../db/level';
+import * as levelDb from '../db/level/utxos';
 import { nulsGetBalanceError, nulsGetUtxosError } from './error';
 import { error } from '../utils/error';
 

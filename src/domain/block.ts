@@ -2,6 +2,7 @@ import { BlockDb, Block, TransactionDb, Transaction } from '../models';
 import { error } from '../utils/error';
 import { nulsGetBlockByHeightError, nulsGetBlockByHashError } from './error';
 import * as levelDb from '../db/level';
+import { Block as NulsBlock } from 'nuls-js';
 
 export async function getBlockByHeight(height: number): Promise<BlockDb> {
 
@@ -68,10 +69,6 @@ export async function getFullBlockByHash(hash: string): Promise<Block> {
 
 export async function getFullBlock(block: BlockDb): Promise<Block> {
 
-  // const transactions: TransactionDb[] = await Promise.all(
-  //   block.transactionHashes.map((txHash: string) => levelDb.getTransaction(txHash))
-  // );
-
   const transactions: TransactionDb[] = []
 
   for (const txHash of block.transactionHashes) {
@@ -104,5 +101,14 @@ export function splitBlock(block: Block): { block: BlockDb, transactions: Transa
     block: block as BlockDb,
     transactions
   };
+
+}
+
+export function parseBlock(blockBytes: string): Block {
+
+  const blockBytesBuffer: Buffer = Buffer.from(blockBytes, 'base64');
+  const block: Block = NulsBlock.fromBytes(blockBytesBuffer).toObject();
+
+  return block;
 
 }

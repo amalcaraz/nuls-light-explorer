@@ -44,5 +44,6 @@ app:
   jobs:
     retryTimeout: 8
     blockTime: 10
+    confirmationBlocks: 100000
   logger:
     logLevel: debug

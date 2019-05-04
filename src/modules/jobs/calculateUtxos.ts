@@ -1,16 +1,12 @@
 import { UtxosDb } from './../../models/utxos';
 import { TransactionOutput } from './../../models/transaction';
-import log from '../../services/logger';
+import logger from '../../services/logger';
 import * as levelDb from '../../db/level';
 import config from '../../services/config';
 import { sleep } from './utils';
 import { BlockDb, Block } from '../../models/block';
 import { getFullBlock } from '../../domain/block';
 import { address } from '../../models/common';
-
-const logger = log.child({
-  pid: 'calculate-utxos'
-});
 
 class CalculateUtxosJob {
 
@@ -25,10 +21,28 @@ class CalculateUtxosJob {
 
   async run() {
 
-    // await levelDb.putLastUtxosHeight(-1);
+    while (true) {
 
-    this.lastSafeHeight = await levelDb.getLastUtxosHeight().catch(() => -1);
-    this.currentHeight = this.lastSafeHeight + 1;
+      try {
+
+        this.lastSafeHeight = await levelDb.getLastUtxosHeight().catch(() => -1);
+        this.currentHeight = this.lastSafeHeight + 1;
+
+        await this.startProcessingUtxos();
+
+      } catch (e) {
+
+        logger.error(`Error processing utxos: ${e}`);
+        logger.info(`Retrying in ${config.jobs.blockTime} sec...`);
+        await sleep(1000 * config.jobs.blockTime);
+
+      }
+
+    }
+
+  }
+
+  async startProcessingUtxos() {
 
     while (true) {
 
@@ -72,10 +86,17 @@ class CalculateUtxosJob {
 
         const errorFn = async (e: Error) => {
 
-          this.removeBlocksStream();
-          await promiseQueue;
-          await this.saveBatchBlocks(currentHeight - 1);
-          reject(e);
+          try {
+
+            this.removeBlocksStream();
+            await promiseQueue;
+            await this.saveBatchUtxos(currentHeight - 1);
+
+          } finally {
+
+            reject(e);
+
+          }
 
         };
 
@@ -89,39 +110,48 @@ class CalculateUtxosJob {
         }))
           .on('data', ({ key, value: blockDb }) => {
 
-            promiseQueue = promiseQueue.then(() => new Promise(async (res, rej) => {
+            promiseQueue = promiseQueue
+              .then(() => new Promise(async (res, rej) => {
 
-              try {
+                try {
 
-                const k: number = parseInt(key);
+                  const k: number = parseInt(key);
 
-                if (k > currentHeight) {
-                  throw (new Error('Non sequential block found'));
+                  if (k > currentHeight) {
+                    throw (new Error('Non sequential block found'));
+                  }
+
+                  await this.processBlock(blockDb);
+
+                  currentHeight++;
+
+                  res();
+
+                } catch (e) {
+
+                  errorFn(e);
+                  rej(e);
+
                 }
 
-                await this.processBlock(blockDb);
-
-                currentHeight++;
-
-                res();
-
-              } catch (e) {
-
-                rej(e);
-                errorFn(e);
-
-              }
-
-            }));
+              }));
 
           })
           .on('error', errorFn)
           .on('end', async () => {
 
-            this.removeBlocksStream();
-            await promiseQueue;
-            await this.saveBatchBlocks(currentHeight - 1);
-            resolve();
+            try {
+
+              this.removeBlocksStream();
+              await promiseQueue;
+              await this.saveBatchUtxos(currentHeight - 1);
+              resolve();
+
+            } catch (e) {
+
+              reject(e);
+
+            }
 
           });
       }
@@ -141,7 +171,7 @@ class CalculateUtxosJob {
 
   }
 
-  private async saveBatchBlocks(bestHeight: number) {
+  private async saveBatchUtxos(bestHeight: number) {
 
     if (bestHeight > this.lastSafeHeight) {
 
@@ -151,7 +181,6 @@ class CalculateUtxosJob {
       await levelDb.putBatchUtxos(this.currentUtxos);
 
       // TODO: Think a better way to improve performance
-      
       this.currentUtxos = {};
       // this.currentTxsOutputs = {};
 
@@ -251,5 +280,11 @@ function run() {
 export default run;
 
 if (require.main === module) {
+
+  (logger as any) = logger.child({
+    pid: 'calculate-utxos'
+  });
+
   run();
+
 }

@@ -1,15 +1,11 @@
 import { TransactionDb } from './../../models/transaction';
-import log from '../../services/logger';
-import { Block, BlockObject } from 'nuls-js';
+import logger from '../../services/logger';
 import * as levelDb from '../../db/level';
 import config from '../../services/config';
 import { sleep } from './utils';
-import { BlockDb } from '../../models/block';
-import { splitBlock } from '../../domain/block';
-
-const logger = log.child({
-  pid: 'parse-blocks'
-});
+import { BlockDb, Block } from '../../models/block';
+import { splitBlock, parseBlock } from '../../domain/block';
+import { MessageType } from '.';
 
 class BlockParseJob {
 
@@ -17,15 +13,35 @@ class BlockParseJob {
 
   private lastSafeHeight: number = -1;
   private blockBytesStream: NodeJS.ReadableStream;
-  private lastBlockProcessed: BlockObject | BlockDb | undefined;
+  private lastBlockProcessed: Block | BlockDb | undefined;
   private currentHeight: number = 0;
   private topHeight: number = -1;
 
   async run() {
 
-    this.lastSafeHeight = await levelDb.getLastBlockHeight().catch(() => -1);
-    this.currentHeight = this.lastSafeHeight + 1;
-    this.lastBlockProcessed = await levelDb.getBlock(this.lastSafeHeight).catch(() => undefined);
+    while (true) {
+
+      try {
+
+        this.lastSafeHeight = await levelDb.getLastBlockHeight().catch(() => -1);
+        this.currentHeight = this.lastSafeHeight + 1;
+        this.lastBlockProcessed = await levelDb.getBlock(this.lastSafeHeight).catch(() => undefined);
+
+        await this.startParsingBlocks();
+
+      } catch (e) {
+
+        logger.error(`Error parsing blocks: ${e}`);
+        logger.info(`Retrying in ${config.jobs.blockTime} sec...`);
+        await sleep(1000 * config.jobs.blockTime);
+
+      }
+
+    }
+
+  }
+
+  async startParsingBlocks() {
 
     while (true) {
 
@@ -64,9 +80,9 @@ class BlockParseJob {
 
       } else {
 
-        const blocks: BlockObject[] = [];
+        const blocks: Block[] = [];
         let currentHeight: number = fromBlock;
-        let lastBlockProcessed: BlockObject | BlockDb | undefined = this.lastBlockProcessed;
+        let lastBlockProcessed: Block | BlockDb | undefined = this.lastBlockProcessed;
 
         const errorFn = async (e: Error) => {
 
@@ -94,14 +110,17 @@ class BlockParseJob {
                 throw (new Error('Non sequential block found'));
               }
 
-              const currentBlock: BlockObject = this.parseBlock(blockBytes);
+              const currentBlock: Block = parseBlock(blockBytes);
               const currentBlockPreHash: string = currentBlock.preHash;
               const lastSafeBlockHash: string = lastBlockProcessed ? lastBlockProcessed.hash : currentBlock.preHash;
 
               // logger.debug(`block[${currentBlock.height}]::${currentBlockPreHash} <---> ${lastSafeBlockHash}::[${lastBlockProcessed ? lastBlockProcessed.height : 'undefined'}]lastBlock`);
 
               if (currentBlockPreHash !== lastSafeBlockHash) {
-                throw (new Error('Non valid preHash found'));
+
+                this.startRollback(currentBlock.height);
+                throw new Error('Non valid preHash found');
+
               }
 
               blocks.push(currentBlock);
@@ -141,7 +160,7 @@ class BlockParseJob {
 
   }
 
-  private async saveBatchBlocks(blocks: BlockObject[]) {
+  private async saveBatchBlocks(blocks: Block[]) {
 
     const bestHeight: number = blocks.length > 0 ? blocks[blocks.length - 1].height : this.lastSafeHeight;
 
@@ -154,9 +173,6 @@ class BlockParseJob {
       await levelDb.putBatchTransactions(dbModels.transactions);
       await levelDb.putBatchBlocks(dbModels.blocks);
 
-      // TODO: Think if this is needed
-      blocks = [];
-
       this.lastSafeHeight = bestHeight;
       this.currentHeight = bestHeight + 1;
       this.lastBlockProcessed = dbModels.blocks[blocks.length - 1];
@@ -165,12 +181,12 @@ class BlockParseJob {
 
   }
 
-  private splitBlocks(blockObjs: BlockObject[]): { blocks: BlockDb[], transactions: TransactionDb[] } {
+  private splitBlocks(blockObjs: Block[]): { blocks: BlockDb[], transactions: TransactionDb[] } {
 
     const blocks: BlockDb[] = [];
     const transactions: TransactionDb[] = [];
 
-    blockObjs.forEach((blockObj: BlockObject) => {
+    blockObjs.forEach((blockObj: Block) => {
 
       const { block: blk, transactions: txs } = splitBlock(blockObj);
 
@@ -186,16 +202,10 @@ class BlockParseJob {
 
   }
 
-  parseBlock(blockBytes: string): BlockObject {
-
-    const blockBytesBuffer: Buffer = Buffer.from(blockBytes, 'base64');
-    const block: BlockObject = Block.fromBytes(blockBytesBuffer).toObject();
-
-    // wait for batch insert
-    // await levelDb.putBlock(block);
-
-    return block;
-
+  private startRollback(currentHeight: number) {
+    if (process.send) {
+      process.send({ type: MessageType.START_ROLLBACK, body: currentHeight });
+    }
   }
 
 }
@@ -210,5 +220,11 @@ function run() {
 export default run;
 
 if (require.main === module) {
+
+  (logger as any) = logger.child({
+    pid: 'parse-blocks'
+  });
+
   run();
+
 }

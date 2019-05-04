@@ -1,19 +1,8 @@
 import logger from '../../services/logger';
-import * as levelDb from '../../db/level/blockByte';
+import * as levelDb from '../../db/level';
 
 export function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-export const NUMERIC_INDEX_DIGIT: number = 8;
-
-export function getBlockNumberKey(height: number): string {
-
-  let ret: string = height.toString();
-
-  while (ret.length < NUMERIC_INDEX_DIGIT) { ret = `0${ret}` }
-  return ret;
-
 }
 
 export async function checkConsecutiveKeys() {
@@ -54,6 +43,52 @@ export async function checkConsecutiveKeys() {
         console.log('MISSED KEYS: ', missed);
         console.log('LAST KEY: ', last);
 
+        resolve();
+      });
+
+  });
+
+}
+
+export async function checkConsecutiveBlockHashes(fromBlock: number, toBlock: number) {
+
+  let lastBlockProcessed: any = await levelDb.getBlock(fromBlock - 1).catch(() => undefined);
+
+  return new Promise<string | undefined>(async (resolve, reject) => {
+
+    const stream = (await levelDb.subscribeToBlocks({
+      gte: fromBlock,
+      lt: toBlock,
+      keys: true,
+      values: true
+    }))
+      .on('data', ({ key, value: currentBlock }) => {
+
+        const k: number = parseInt(key);
+
+        if (k % 10000 === 0) {
+          logger.debug('keys --> ', k);
+        }
+
+        const currentBlockPreHash: string = currentBlock.preHash;
+        const lastSafeBlockHash: string = lastBlockProcessed ? lastBlockProcessed.hash : currentBlock.preHash;
+
+        if (currentBlockPreHash !== lastSafeBlockHash) {
+
+          stream.removeAllListeners();
+          resolve(key);
+
+        }
+
+        lastBlockProcessed = currentBlock;
+
+      }).on('error', (e) => {
+        logger.error(e);
+        stream.removeAllListeners();
+        reject(e);
+      })
+      .on('end', () => {
+        stream.removeAllListeners();
         resolve();
       });
 

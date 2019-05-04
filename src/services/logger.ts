@@ -6,7 +6,7 @@ const pino = pinoLib({
   safe: true,
 });
 
-export const logger: pinoLib.Logger = pino.child({
+export let logger: pinoLib.Logger = pino.child({
   hostname: config.hostname,
   pid: 'master',
   level: config.logger.logLevel,

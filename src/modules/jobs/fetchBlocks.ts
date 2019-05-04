@@ -1,15 +1,12 @@
-import log from '../../services/logger';
+import logger from '../../services/logger';
 import * as nulsService from '../../services/nuls';
-import { NulsBlockHeader } from '../../models/nuls';
 import * as levelDb from '../../db/level/blockByte';
 import config from '../../services/config';
 import * as PromisePool from 'es6-promise-pool';
 import { sleep } from './utils';
 import { OrderedSet } from 'immutable';
-
-const logger = log.child({
-  pid: 'fetch-blocks'
-});
+import { fetchBlock } from '../../domain/blockBytes';
+import { checkVersion } from '../../domain/utils';
 
 class BlockFetchJob {
 
@@ -20,7 +17,7 @@ class BlockFetchJob {
   static fetchBlockByHeightVersion = 1
 
   private blockBytesFlag: boolean;
-
+  private checkMissedBlocksInverval: undefined | NodeJS.Timeout;
   private missedBlocks: OrderedSet<number> = OrderedSet<number>();
   private lastSafeHeight: number = -1;
   private currentHeight: number = 0;
@@ -29,11 +26,35 @@ class BlockFetchJob {
 
   async run() {
 
-    this.blockBytesFlag = await this.checkVersion();
-    this.lastSafeHeight = await levelDb.getLastBlockBytesHeight().catch(() => -1);
-    this.currentHeight = this.lastSafeHeight + 1;
+    while (true) {
 
-    setInterval(() => this.checkMissedBlocks(), 1000 * config.jobs.blockTime);
+      try {
+
+        this.blockBytesFlag = await checkVersion();
+        this.lastSafeHeight = await levelDb.getLastBlockBytesHeight().catch(() => -1);
+        this.currentHeight = this.lastSafeHeight + 1;
+
+        this.checkMissedBlocksInverval = setInterval(() => this.checkMissedBlocks(), 1000 * config.jobs.blockTime);
+
+        await this.startFetchingBlocks();
+
+      } catch (e) {
+
+        if (this.checkMissedBlocksInverval) {
+          clearInterval(this.checkMissedBlocksInverval);
+        }
+
+        logger.error(`Error fetching blocks: ${e}`);
+        logger.info(`Retrying in ${config.jobs.blockTime} sec...`);
+        await sleep(1000 * config.jobs.blockTime);
+
+      }
+
+    }
+
+  }
+
+  private async startFetchingBlocks() {
 
     while (true) {
 
@@ -66,42 +87,11 @@ class BlockFetchJob {
 
   }
 
-  // Check if current client version is greater than "minVersion"
-  async checkVersion(minVersion = '1.2.0-beta1'): Promise<boolean> {
-
-    const pattern = /^(\d+)\.(\d+)\.(\d+)($|.+)/;
-
-    const currentVersion: string = (await nulsService.getClientVersion()).myVersion;
-    const v1 = currentVersion.match(pattern);
-    const v2 = minVersion.match(pattern);
-
-    logger.debug(`is ${currentVersion} >= ${minVersion} ?`);
-
-    return !!v1 && !!v2 && (parseInt(v1[1]) >= parseInt(v2[1]) && parseInt(v1[2]) >= parseInt(v2[2]) && parseInt(v1[3]) >= parseInt(v2[3]));
-
-  }
-
-  async fetchBlock(currentHeight: number): Promise<number> {
+  private async fetchBlock(currentHeight: number): Promise<number> {
 
     try {
 
-      // if (currentHeight % 1000 === 0)
-      //   logger.debug(`--> Fetching block [${currentHeight}]`);
-
-      let blockBytes: string;
-
-      if (this.blockBytesFlag) {
-
-        blockBytes = await nulsService.getBlockBytes(currentHeight);
-
-      } else {
-
-        const blockHeader: NulsBlockHeader = await nulsService.getBlockHeader(currentHeight);
-        blockBytes = await nulsService.getBlockBytes(blockHeader.hash);
-
-      }
-     
-      await levelDb.putBlockBytes(currentHeight, blockBytes);
+      await fetchBlock(currentHeight, this.blockBytesFlag);
 
     } catch (e) {
 
@@ -114,7 +104,7 @@ class BlockFetchJob {
 
   }
 
-  async checkMissedBlocks() {
+  private async checkMissedBlocks() {
 
     if (!this.checkingMissedStream) {
 
@@ -212,17 +202,21 @@ class BlockFetchJob {
   }
 }
 
-function run() {
-
+async function run() {
+  
   const job: BlockFetchJob = new BlockFetchJob();
   job.run();
-
-  // await checkConsecutiveKeys();
 
 }
 
 export default run;
 
 if (require.main === module) {
+  
+  (logger as any) = logger.child({
+    pid: 'fetch-blocks'
+  });
+
   run();
+
 }

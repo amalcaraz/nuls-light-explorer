@@ -16,10 +16,9 @@ services:
       - "9229:9229"
     depends_on:
       - nuls
-      - mongo
 
   nuls:
-    image: nuls/client-node:1.2.0-beta1
+    image: nuls/client-node:1.2.2-beta
     ports:
       - 8001:8001
     volumes:

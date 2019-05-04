@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import * as domain from '../domain/explorer';
+import * as domain from '../domain';
 import { isHash } from '../utils/utils';
 
 export async function getLastHeightController(req: Request, res: Response, next: NextFunction) {
